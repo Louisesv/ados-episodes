@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Просмотр Firebase</title>
+    <style>
+        body {
+            background: #0d0d1a;
+            color: #e0dcd6;
+            font-family: monospace;
+            padding: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        button {
+            background: #4f46e5;
+            border: none;
+            color: #fff;
+            padding: 8px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 4px;
+        }
+        button:hover { background: #4338ca; }
+        pre {
+            background: rgba(0,0,0,0.3);
+            padding: 16px;
+            border-radius: 8px;
+            overflow: auto;
+            max-height: 500px;
+            font-size: 12px;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        .status {
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin: 6px 0;
+        }
+        .status.ok { background: rgba(16,185,129,0.15); color: #10b981; }
+        .status.err { background: rgba(239,68,68,0.15); color: #ef4444; }
+        .status.info { background: rgba(251,191,36,0.15); color: #fbbf24; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Просмотр Firebase</h1>
+    <p>Проверяем, какие данные есть в базе</p>
+
+    <div id="status" class="status info">⏳ Нажмите кнопку для проверки</div>
+
+    <button onclick="checkRoot()">📂 Проверить корень</button>
+    <button onclick="checkQueueData()">📂 Проверить queueData</button>
+    <button onclick="checkEpisodes()">📂 Проверить episodes</button>
+    <button onclick="checkAll()">🔍 Проверить всё</button>
+
+    <h3>📋 Результат:</h3>
+    <pre id="result">Ожидание запроса...</pre>
+
+    <script>
+        const statusEl = document.getElementById('status');
+        const resultEl = document.getElementById('result');
+
+        const BASE_URL = 'https://queue-tracker-ff855-default-rtdb.europe-west1.firebasedatabase.app';
+
+        function setStatus(msg, type) {
+            statusEl.textContent = msg;
+            statusEl.className = 'status ' + (type || 'info');
+        }
+
+        function fetchPath(path) {
+            const url = BASE_URL + path + '.json?t=' + Date.now();
+            setStatus('⏳ Загрузка: ' + path, 'info');
+            
+            return fetch(url)
+                .then(r => {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.json();
+                })
+                .then(data => {
+                    if (data === null) {
+                        return { path: path, data: null, message: '⚠️ Данных нет (null)' };
+                    }
+                    return { path: path, data: data, message: '✅ Данные найдены!' };
+                })
+                .catch(e => {
+                    return { path: path, data: null, message: '❌ Ошибка: ' + e.message };
+                });
+        }
+
+        window.checkRoot = function() {
+            resultEl.textContent = 'Загрузка...';
+            fetchPath('')
+                .then(result => {
+                    resultEl.textContent = '📂 Корень (/) — ' + result.message + '\n\n';
+                    if (result.data !== null) {
+                        resultEl.textContent += JSON.stringify(result.data, null, 2);
+                    } else {
+                        resultEl.textContent += '🔍 В корне нет данных';
+                    }
+                    setStatus('✅ Проверка корня завершена', 'ok');
+                });
+        };
+
+        window.checkQueueData = function() {
+            resultEl.textContent = 'Загрузка...';
+            fetchPath('/queueData')
+                .then(result => {
+                    resultEl.textContent = '📂 /queueData — ' + result.message + '\n\n';
+                    if (result.data !== null) {
+                        resultEl.textContent += JSON.stringify(result.data, null, 2);
+                    } else {
+                        resultEl.textContent += '🔍 По пути /queueData нет данных';
+                        resultEl.textContent += '\n\n💡 Попробуйте проверить корень (/), возможно данные лежат по другому пути.';
+                    }
+                    setStatus('✅ Проверка queueData завершена', 'ok');
+                });
+        };
+
+        window.checkEpisodes = function() {
+            resultEl.textContent = 'Загрузка...';
+            fetchPath('/episodes')
+                .then(result => {
+                    resultEl.textContent = '📂 /episodes — ' + result.message + '\n\n';
+                    if (result.data !== null) {
+                        resultEl.textContent += JSON.stringify(result.data, null, 2);
+                    } else {
+                        resultEl.textContent += '🔍 По пути /episodes нет данных';
+                    }
+                    setStatus('✅ Проверка episodes завершена', 'ok');
+                });
+        };
+
+        window.checkAll = function() {
+            resultEl.textContent = 'Загрузка...\n';
+            setStatus('⏳ Проверка всех путей...', 'info');
+            
+            Promise.all([
+                fetchPath(''),
+                fetchPath('/queueData'),
+                fetchPath('/episodes')
+            ]).then(results => {
+                let text = '';
+                results.forEach(r => {
+                    text += '📂 ' + r.path + ' — ' + r.message + '\n';
+                    if (r.data !== null) {
+                        text += JSON.stringify(r.data, null, 2) + '\n\n';
+                    } else {
+                        text += '   (null)\n\n';
+                    }
+                });
+                resultEl.textContent = text;
+                setStatus('✅ Проверка всех путей завершена', 'ok');
+            });
+        };
+
+        // Автозапуск
+        setTimeout(checkAll, 500);
+    </script>
+</body>
+</html>
+```
+
+</BDS:LONG_WORK>
+
+---
+
+## 🚀 **Что делать:**
+
+1. Загрузите `firebase-explorer.html` на GitHub Pages
+2. Откройте его
+3. Нажмите **"🔍 Проверить всё"**
+4. Посмотрите, что покажет
+
+---
+
+## 📝 **Что мы узнаем:**
+
+- Если **в корне** есть данные — значит, они лежат не по пути `queueData`
+- Если **в queueData** есть данные — значит, проблема в виджете
+- Если **нигде** нет данных — значит, их нужно создать заново
+
+---
+
+**Откройте файл и скажите, что показывает!** Это поможет понять, куда именно сохранились данные.
