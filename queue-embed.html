@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Очередь</title>
     <style>
-        /* Полностью убираем отступы и фон */
         * {
             margin: 0;
             padding: 0;
@@ -42,7 +41,6 @@
             color: #cc6666;
             opacity: 1;
         }
-        /* Статус подключения — скрыт */
         .status-bar {
             display: none;
         }
@@ -74,15 +72,11 @@
 
     var container = document.getElementById('queue');
 
-    // Инициализация Firebase
     if (!firebase.apps.length) {
         firebase.initializeApp(FIREBASE_CONFIG);
     }
     var db = firebase.database();
 
-    // ================================================================
-    // ПУТЬ: queueDataAdvanced
-    // ================================================================
     var ref = db.ref('queueDataAdvanced');
 
     ref.on('value', function(snapshot) {
@@ -97,7 +91,18 @@
     });
 
     // ================================================================
-    // ОТОБРАЖЕНИЕ — ТОЛЬКО НАЗВАНИЕ, БЕЗ МЕТА
+    // ФУНКЦИЯ ДЛЯ ОЧИСТКИ НАЗВАНИЯ
+    // Обрезает всё, что идёт после "("
+    // ================================================================
+    function cleanTitle(title) {
+        if (!title) return 'Без названия';
+        var index = title.indexOf('(');
+        if (index === -1) return title.trim();
+        return title.substring(0, index).trim();
+    }
+
+    // ================================================================
+    // ОТОБРАЖЕНИЕ
     // ================================================================
     function render(data) {
         var episodes = data.episodes || {};
@@ -119,8 +124,8 @@
             if (!ep) return;
 
             var players = ep.players || [];
-            var title = ep.title || 'Без названия';
-            // МЕТА УБРАНА — используем только title
+            var rawTitle = ep.title || 'Без названия';
+            var title = cleanTitle(rawTitle); // Очищаем от мета-информации
 
             var current = null;
             for (var i = 0; i < players.length; i++) {
@@ -150,35 +155,31 @@
 
 ---
 
-## 🔄 **Что изменилось:**
+## 🔧 **Что изменилось:**
+
+Добавлена функция `cleanTitle()`, которая обрезает всё после первой скобки `(`:
 
 ```
-// Было:
-var line = title + (meta ? ' (' + meta + ')' : '') + ' — ' + name;
-
-// Стало:
-var line = title + ' — ' + name;
+function cleanTitle(title) {
+    if (!title) return 'Без названия';
+    var index = title.indexOf('(');
+    if (index === -1) return title.trim();
+    return title.substring(0, index).trim();
+}
 ```
 
-Теперь вывод будет таким:
+Теперь:
 
-```
-Ep.8. Сталь, кровь и пепел: Шепот в ночи — DAEMON BLACKFYRE
-```
-
-Вместо:
-
-```
-Ep.8. Сталь, кровь и пепел: Шепот в ночи (конец 3 месяца 302 З.Э.) — DAEMON BLACKFYRE
-```
+- `Ep.1.2. Сталь, кровь и пепел: Турнир (конец 3 месяца 302 З.Э.)` → `Ep.1.2. Сталь, кровь и пепел: Турнир`
+- `Ep.2. Сталь, кровь и пепел: Цена одного слова (конец 3 месяца 302 З.Э.)` → `Ep.2. Сталь, кровь и пепел: Цена одного слова`
 
 ---
 
 ## 🚀 **Что делать:**
 
 1. **Обновите файл** `queue-embed.html` на GitHub Pages этим кодом
-2. Всё остальное (iframe на форуме) остаётся без изменений
+2. Всё остальное без изменений
 
 ---
 
-**Теперь названия эпизодов будут чистыми!** 🎯
+**Теперь мета-информация точно исчезнет!** 🎯
