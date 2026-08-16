@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Очередь</title>
+    <style>
+        body {
+            background: #0d0d1a;
+            color: #e0dcd6;
+            font-family: -apple-system, 'Segoe UI', Roboto, system-ui, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .queue-item {
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .error {
+            color: #cc6666;
+            text-align: center;
+            padding: 20px;
+        }
+        .loading {
+            text-align: center;
+            opacity: 0.6;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>📋 Очередь</h1>
+    <div id="queue">
+        <div class="loading">Загрузка...</div>
+    </div>
+
+    <script>
+        // ================================================================
+        // КОНФИГ
+        // ================================================================
+        const DB_URL = 'https://queue-tracker-ff855-default-rtdb.europe-west1.firebasedatabase.app/queueData.json';
+        // ================================================================
+
+        var container = document.getElementById('queue');
+
+        function loadData() {
+            var url = DB_URL + '?t=' + Date.now();
+
+            fetch(url)
+                .then(function(response) {
+                    if (!response.ok) throw new Error('HTTP ' + response.status);
+                    return response.json();
+                })
+                .then(function(data) {
+                    if (data && data.episodes) {
+                        render(data);
+                    } else {
+                        container.innerHTML = '<div class="error">❌ Нет данных</div>';
+                    }
+                })
+                .catch(function(error) {
+                    container.innerHTML = '<div class="error">❌ Ошибка: ' + error.message + '</div>';
+                    console.error('Ошибка:', error);
+                });
+        }
+
+        function render(data) {
+            var episodes = data.episodes || {};
+            var keys = Object.keys(episodes).sort(function(a, b) {
+                return parseFloat(a.replace('ep', '')) - parseFloat(b.replace('ep', ''));
+            });
+
+            if (keys.length === 0) {
+                container.innerHTML = '<div class="loading">Нет эпизодов</div>';
+                return;
+            }
+
+            var html = '';
+
+            keys.forEach(function(key) {
+                var ep = episodes[key];
+                if (!ep) return;
+
+                var players = ep.players || [];
+                var title = ep.title || 'Без названия';
+                var meta = ep.meta || '';
+
+                var current = null;
+                for (var i = 0; i < players.length; i++) {
+                    if (!players[i].done && !players[i].skipped) {
+                        current = players[i];
+                        break;
+                    }
+                }
+                if (!current && players.length > 0) {
+                    current = players[0];
+                }
+
+                var name = current ? current.name : '—';
+                var line = title + (meta ? ' (' + meta + ')' : '') + ' — ' + name;
+
+                html += '<div class="queue-item">' + line + '</div>';
+            });
+
+            container.innerHTML = html;
+        }
+
+        // Запуск
+        loadData();
+    </script>
+</body>
+</html>
+```
+
+</BDS:LD>
+</BDS:LONG_WORK>
+
+---
+
+## 🚀 **Что делать:**
+
+1. Загрузите `queue-simple.html` на GitHub Pages
+2. Откройте его
+3. Если показывает очередь — значит, всё работает
+4. Если нет — напишите, что видите
+
+---
+
+## 📝 **После того как простой вариант заработает:**
+
+Мы сможем его использовать как основу для виджета на форуме (через iframe).
+
+**Попробуйте оба файла и скажите, что показывает!**
+</BDS:create_file>
+
