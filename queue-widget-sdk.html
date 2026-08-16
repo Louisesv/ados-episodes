@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Очередь</title>
+    <style>
+        body {
+            background: #0d0d1a;
+            color: #e0dcd6;
+            font-family: -apple-system, 'Segoe UI', Roboto, system-ui, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .queue-item {
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .error {
+            color: #cc6666;
+            text-align: center;
+            padding: 20px;
+        }
+        .loading {
+            text-align: center;
+            opacity: 0.6;
+            padding: 20px;
+        }
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        .status-dot.online { background: #10b981; }
+        .status-dot.offline { background: #ef4444; }
+        .status-bar {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>📋 Очередь</h1>
+    <div id="queue">
+        <div class="loading">Загрузка...</div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+    <script>
+    // ================================================================
+    // КОНФИГ FIREBASE
+    // ================================================================
+    const FIREBASE_CONFIG = {
+        apiKey: "AIzaSyAR3nEI0L71ux5Yro_XM76O1IYKkReXWnE",
+        authDomain: "queue-tracker-ff855.firebaseapp.com",
+        databaseURL: "https://queue-tracker-ff855-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "queue-tracker-ff855",
+        storageBucket: "queue-tracker-ff855.firebasestorage.app",
+        messagingSenderId: "545216354720",
+        appId: "1:545216354720:web:f57c376b87e3924f232cc5",
+        measurementId: "G-D3JQR37F9E"
+    };
+    // ================================================================
+
+    var container = document.getElementById('queue');
+
+    // Инициализация Firebase
+    if (!firebase.apps.length) {
+        firebase.initializeApp(FIREBASE_CONFIG);
+    }
+    var db = firebase.database();
+
+    // Подписываемся на изменения в реальном времени
+    var ref = db.ref('queueData');
+
+    ref.on('value', function(snapshot) {
+        var data = snapshot.val();
+        console.log('📥 Данные из Firebase:', data);
+        
+        if (data && data.episodes) {
+            render(data);
+        } else {
+            container.innerHTML = '<div class="error">❌ Нет данных в queueData</div>';
+            console.warn('⚠️ Нет данных или поле episodes отсутствует');
+        }
+    }, function(error) {
+        console.error('❌ Ошибка Firebase:', error);
+        container.innerHTML = '<div class="error">❌ Ошибка подключения к Firebase</div>';
+    });
+
+    // ================================================================
+    // ОТОБРАЖЕНИЕ
+    // ================================================================
+    function render(data) {
+        var episodes = data.episodes || {};
+        var keys = Object.keys(episodes).sort(function(a, b) {
+            var numA = parseFloat(a.replace('ep', ''));
+            var numB = parseFloat(b.replace('ep', ''));
+            return numA - numB;
+        });
+
+        if (keys.length === 0) {
+            container.innerHTML = '<div class="loading">Нет эпизодов</div>';
+            return;
+        }
+
+        var html = '';
+
+        keys.forEach(function(key) {
+            var ep = episodes[key];
+            if (!ep) return;
+
+            var players = ep.players || [];
+            var title = ep.title || 'Без названия';
+            var meta = ep.meta || '';
+
+            // Находим первого, кто не отписался и не пропустил
+            var current = null;
+            for (var i = 0; i < players.length; i++) {
+                var p = players[i];
+                if (!p.done && !p.skipped) {
+                    current = p;
+                    break;
+                }
+            }
+
+            // Если все отписались — берём первого
+            if (!current && players.length > 0) {
+                current = players[0];
+            }
+
+            var currentName = current ? current.name : '—';
+
+            var line = title;
+            if (meta) line += ' (' + meta + ')';
+            line += ' — ' + currentName;
+
+            html += '<div class="queue-item">' + line + '</div>';
+        });
+
+        container.innerHTML = html;
+        console.log('✅ Отображено ' + keys.length + ' эпизодов');
+    }
+
+    // Статус подключения
+    db.ref('.info/connected').on('value', function(snap) {
+        var status = document.getElementById('status');
+        if (!status) {
+            var bar = document.createElement('div');
+            bar.className = 'status-bar';
+            bar.id = 'status';
+            bar.innerHTML = '<span class="status-dot offline" id="statusDot"></span> <span id="statusText">Подключение...</span>';
+            document.querySelector('h1').after(bar);
+        }
+        var dot = document.getElementById('statusDot');
+        var text = document.getElementById('statusText');
+        if (snap.val()) {
+            dot.className = 'status-dot online';
+            text.textContent = 'Online';
+        } else {
+            dot.className = 'status-dot offline';
+            text.textContent = 'Offline';
+        }
+    });
+
+    console.log('🚀 Виджет запущен, ожидаем данные...');
+    </script>
+</body>
+</html>
+```
+
+</BDS:LONG_WORK>
+
+---
+
+## 🚀 **Что делать:**
+
+1. **Скопируйте код** из файла выше
+2. **Создайте** на GitHub Pages файл `queue-widget-sdk.html` с этим кодом
+3. **Откройте** его
+
+---
+
+## 🔄 **Что изменилось:**
+
+- Используем **Firebase SDK** вместо REST API
+- Данные приходят через **WebSocket** — CORS не блокирует
+- **Real-time обновление** — при изменении в Firebase виджет обновляется мгновенно
+
+---
+
+## 📝 **Если всё работает:**
+
+Этот файл можно использовать как **основу для виджета на форуме** через iframe.
+
+---
+
+**Откройте `queue-widget-sdk.html` и скажите, что показывает!** 🎯
