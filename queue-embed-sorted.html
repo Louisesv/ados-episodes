@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Очередь</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: transparent;
+            font-family: -apple-system, 'Segoe UI', Roboto, system-ui, sans-serif;
+            color: #e0dcd6;
+            padding: 0;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        #queue {
+            padding: 2px 0;
+        }
+        .queue-item {
+            padding: 2px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .queue-item:last-child {
+            border-bottom: none;
+        }
+        .loading, .error {
+            text-align: center;
+            opacity: 0.6;
+            padding: 4px 0;
+            font-size: 12px;
+        }
+        .error {
+            color: #cc6666;
+            opacity: 1;
+        }
+        .status-bar {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="queue">
+        <div class="loading">⏳ Загрузка...</div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+    <script>
+    // ================================================================
+    // КОНФИГ FIREBASE
+    // ================================================================
+    const FIREBASE_CONFIG = {
+        apiKey: "AIzaSyAR3nEI0L71ux5Yro_XM76O1IYKkReXWnE",
+        authDomain: "queue-tracker-ff855.firebaseapp.com",
+        databaseURL: "https://queue-tracker-ff855-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "queue-tracker-ff855",
+        storageBucket: "queue-tracker-ff855.firebasestorage.app",
+        messagingSenderId: "545216354720",
+        appId: "1:545216354720:web:f57c376b87e3924f232cc5",
+        measurementId: "G-D3JQR37F9E"
+    };
+    // ================================================================
+
+    var container = document.getElementById('queue');
+
+    if (!firebase.apps.length) {
+        firebase.initializeApp(FIREBASE_CONFIG);
+    }
+    var db = firebase.database();
+
+    var ref = db.ref('queueDataAdvanced');
+
+    ref.on('value', function(snapshot) {
+        var data = snapshot.val();
+        if (data && data.episodes) {
+            render(data);
+        } else {
+            container.innerHTML = '<div class="error">⚠️ Нет данных</div>';
+        }
+    }, function(error) {
+        container.innerHTML = '<div class="error">⚠️ Ошибка</div>';
+    });
+
+    // ================================================================
+    // ФУНКЦИЯ ДЛЯ ИЗВЛЕЧЕНИЯ НОМЕРА ЭПИЗОДА ИЗ НАЗВАНИЯ
+    // ================================================================
+    function extractEpisodeNumber(title) {
+        if (!title) return 0;
+        // Ищем "Ep.X" или "Ep.X.Y" в начале названия
+        var match = title.match(/^Ep\.([\d.]+)/);
+        if (match) {
+            var numStr = match[1];
+            // Преобразуем "1.2" в число 1.2 (для сравнения)
+            return parseFloat(numStr);
+        }
+        return 0;
+    }
+
+    // ================================================================
+    // ФУНКЦИЯ ДЛЯ ОЧИСТКИ НАЗВАНИЯ (убираем мета-информацию)
+    // ================================================================
+    function cleanTitle(title) {
+        if (!title) return 'Без названия';
+        var index = title.indexOf('(');
+        if (index === -1) return title.trim();
+        return title.substring(0, index).trim();
+    }
+
+    // ================================================================
+    // ОТОБРАЖЕНИЕ С СОРТИРОВКОЙ ПО НОМЕРУ В НАЗВАНИИ
+    // ================================================================
+    function render(data) {
+        var episodes = data.episodes || {};
+        
+        // Превращаем объект в массив для сортировки
+        var episodeList = Object.keys(episodes).map(function(key) {
+            return {
+                key: key,
+                data: episodes[key]
+            };
+        });
+
+        // Сортируем по номеру эпизода, извлечённому из названия
+        episodeList.sort(function(a, b) {
+            var numA = extractEpisodeNumber(a.data.title || '');
+            var numB = extractEpisodeNumber(b.data.title || '');
+            return numA - numB;
+        });
+
+        if (episodeList.length === 0) {
+            container.innerHTML = '<div class="loading">Нет эпизодов</div>';
+            return;
+        }
+
+        var html = '';
+
+        episodeList.forEach(function(item) {
+            var ep = item.data;
+            if (!ep) return;
+
+            var players = ep.players || [];
+            var rawTitle = ep.title || 'Без названия';
+            var title = cleanTitle(rawTitle);
+
+            var current = null;
+            for (var i = 0; i < players.length; i++) {
+                if (!players[i].done && !players[i].skipped) {
+                    current = players[i];
+                    break;
+                }
+            }
+            if (!current && players.length > 0) {
+                current = players[0];
+            }
+
+            var name = current ? current.name : '—';
+            var line = title + ' — ' + name;
+
+            html += '<div class="queue-item">' + line + '</div>';
+        });
+
+        container.innerHTML = html;
+    }
+    </script>
+</body>
+</html>
+```
+
+</BDS:LONG_WORK>
+
+---
+
+## 🔧 **Что изменилось:**
+
+1. **Функция `extractEpisodeNumber()`** — ищет в названии `Ep.1.2` и извлекает число `1.2`
+2. **Сортировка** теперь не по ключу (`ep1`, `ep2`), а по числовому значению из названия
+3. **Порядок будет:**
+
+- Ep.1.2 (число 1.2)
+- Ep.2 (число 2)
+- Ep.3 (число 3)
+- Ep.4 (число 4)
+- Ep.5 (число 5)
+- Ep.7 (число 7)
+- Ep.8 (число 8)
+
+---
+
+## 🚀 **Что делать:**
+
+1. **Обновите файл** на GitHub Pages на `queue-embed-sorted.html` (или переименуйте в `queue-embed.html`)
+2. Если оставите название `queue-embed-sorted.html`, не забудьте поправить ссылку в iframe на форуме
+
+---
+
+**Теперь эпизоды будут сортироваться по номерам из названий!** 🎯
