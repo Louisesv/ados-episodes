@@ -26,15 +26,6 @@
             opacity: 0.6;
             padding: 20px;
         }
-        .status-dot {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            margin-right: 6px;
-        }
-        .status-dot.online { background: #10b981; }
-        .status-dot.offline { background: #ef4444; }
         .status-bar {
             font-size: 12px;
             color: #6b7280;
@@ -43,6 +34,15 @@
             align-items: center;
             gap: 8px;
         }
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 4px;
+        }
+        .status-dot.online { background: #10b981; }
+        .status-dot.offline { background: #ef4444; }
     </style>
 </head>
 <body>
@@ -78,8 +78,10 @@
     }
     var db = firebase.database();
 
-    // Подписываемся на изменения в реальном времени
-    var ref = db.ref('queueData');
+    // ================================================================
+    // ПРАВИЛЬНЫЙ ПУТЬ: queueDataAdvanced
+    // ================================================================
+    var ref = db.ref('queueDataAdvanced');
 
     ref.on('value', function(snapshot) {
         var data = snapshot.val();
@@ -88,7 +90,7 @@
         if (data && data.episodes) {
             render(data);
         } else {
-            container.innerHTML = '<div class="error">❌ Нет данных в queueData</div>';
+            container.innerHTML = '<div class="error">❌ Нет данных в queueDataAdvanced</div>';
             console.warn('⚠️ Нет данных или поле episodes отсутствует');
         }
     }, function(error) {
@@ -171,7 +173,7 @@
         }
     });
 
-    console.log('🚀 Виджет запущен, ожидаем данные...');
+    console.log('🚀 Виджет запущен, ищем данные в queueDataAdvanced...');
     </script>
 </body>
 </html>
@@ -183,24 +185,17 @@
 
 ## 🚀 **Что делать:**
 
-1. **Скопируйте код** из файла выше
-2. **Создайте** на GitHub Pages файл `queue-widget-sdk.html` с этим кодом
-3. **Откройте** его
+1. **Обновите файл** `queue-widget-sdk.html` на GitHub Pages этим кодом
+2. **Откройте** его
+3. Теперь виджет должен показать все эпизоды из `queueDataAdvanced`
 
 ---
 
-## 🔄 **Что изменилось:**
+## 📝 **Что изменилось:**
 
-- Используем **Firebase SDK** вместо REST API
-- Данные приходят через **WebSocket** — CORS не блокирует
-- **Real-time обновление** — при изменении в Firebase виджет обновляется мгновенно
-
----
-
-## 📝 **Если всё работает:**
-
-Этот файл можно использовать как **основу для виджета на форуме** через iframe.
+- Путь в Firebase: `queueData` → `queueDataAdvanced`
+- Всё остальное осталось тем же
 
 ---
 
-**Откройте `queue-widget-sdk.html` и скажите, что показывает!** 🎯
+**Обновите файл и скажите, что показывает!** Теперь данные точно должны подгрузиться. 🎯
