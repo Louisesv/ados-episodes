@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Очередь эпизодов</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+            padding: 2rem 1rem;
+            min-height: 100vh;
+            background: transparent;
+            color: #e8e6e3;
+        }
+        .container { max-width: 820px; margin: 0 auto; padding: 0.5rem 0; }
+        
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            padding-bottom: 0.75rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .app-header h1 {
+            font-size: 1.8rem;
+            font-weight: 300;
+            letter-spacing: 2px;
+            color: #d4d0c8;
+            text-transform: uppercase;
+        }
+        .app-header .status-group {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 0.8rem;
+            color: #7a726a;
+        }
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4a4a4a;
+            margin-right: 4px;
+            transition: 0.3s;
+        }
+        .status-dot.online { background: #7aaa7a; box-shadow: 0 0 8px rgba(122,170,122,0.3); }
+        .status-dot.offline { background: #7a5a4a; }
+
+        .episode-selector {
+            display: flex;
+            gap: 0.6rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .episode-selector label {
+            font-size: 0.85rem;
+            color: #8a8078;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .episode-selector select {
+            flex: 1;
+            min-width: 200px;
+            padding: 0.6rem 1rem;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 40px;
+            font-size: 0.95rem;
+            outline: none;
+            background: rgba(255,255,255,0.03);
+            color: #e0dcd6;
+            font-family: inherit;
+            cursor: pointer;
+        }
+        .episode-selector select:focus {
+            border-color: rgba(200,180,160,0.25);
+            background: rgba(255,255,255,0.05);
+        }
+        .episode-selector select option { background: #1a1a1a; color: #e0dcd6; }
+        .episode-selector button {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: #d0c8c0;
+            padding: 0.6rem 1.2rem;
+            border-radius: 40px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: 0.2s;
+            font-family: inherit;
+            white-space: nowrap;
+        }
+        .episode-selector button:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.15); }
+        .episode-selector .delete-ep-btn {
+            background: rgba(200,60,60,0.1);
+            border-color: rgba(200,60,60,0.15);
+            color: #c07070;
+        }
+        .episode-selector .delete-ep-btn:hover { background: rgba(200,60,60,0.2); }
+
+        .episode-block {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 12px;
+            padding: 1.2rem 1.5rem;
+            margin-bottom: 2.5rem;
+            backdrop-filter: blur(2px);
+        }
+        .episode-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #8a8078;
+            font-weight: 400;
+            margin-bottom: 0.3rem;
+        }
+        .episode-title {
+            font-size: 1.4rem;
+            font-weight: 500;
+            color: #ece8e0;
+            background: transparent;
+            border: none;
+            width: 100%;
+            padding: 0.3rem 0;
+            outline: none;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            transition: 0.2s;
+            font-family: inherit;
+        }
+        .episode-title:focus { border-bottom-color: rgba(200,180,160,0.3); }
+        .episode-title::placeholder { color: #5a524a; }
+        .episode-meta {
+            margin-top: 0.6rem;
+            font-size: 0.9rem;
+            color: #9a928a;
+            background: transparent;
+            border: none;
+            width: 100%;
+            padding: 0.2rem 0;
+            outline: none;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            transition: 0.2s;
+            font-family: inherit;
+        }
+        .episode-meta:focus { border-bottom-color: rgba(200,180,160,0.25); }
+        .episode-meta::placeholder { color: #5a524a; }
+
+        .queue-section { margin-top: 0.5rem; }
+        .queue-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 1rem;
+            padding: 0 0.2rem;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .queue-header span {
+            font-size: 0.8rem;
+            font-weight: 400;
+            letter-spacing: 1px;
+            color: #c8c0b8;
+            text-transform: uppercase;
+        }
+        .queue-header .badge {
+            font-size: 0.75rem;
+            color: #7a726a;
+            background: rgba(255,255,255,0.04);
+            padding: 0.2rem 0.8rem;
+            border-radius: 40px;
+            border: 1px solid rgba(255,255,255,0.04);
+        }
+
+        .add-form {
+            display: flex;
+            gap: 0.6rem;
+            margin-bottom: 1.8rem;
+            flex-wrap: wrap;
+        }
+        .add-form input {
+            flex: 2;
+            min-width: 160px;
+            padding: 0.6rem 1rem;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 40px;
+            font-size: 0.95rem;
+            outline: none;
+            background: rgba(255,255,255,0.03);
+            color: #e0dcd6;
+            font-family: inherit;
+        }
+        .add-form input:focus {
+            border-color: rgba(200,180,160,0.25);
+            background: rgba(255,255,255,0.05);
+        }
+        .add-form input::placeholder { color: #5a524a; }
+        .add-form button {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: #d0c8c0;
+            padding: 0.6rem 1.6rem;
+            border-radius: 40px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: 0.2s;
+            font-family: inherit;
+            white-space: nowrap;
+        }
+        .add-form button:hover { background: rgba(255,255,255,0.1); }
+
+        .queue-list { list-style: none; padding: 0; margin: 0; }
+        .queue-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.7rem 1rem;
+            margin-bottom: 0.3rem;
+            border-radius: 10px;
+            border: 1px solid transparent;
+            transition: 0.2s ease;
+            background: transparent;
+        }
+        .queue-item:hover { background: rgba(255,255,255,0.02); }
+        .queue-item.done { opacity: 0.4; }
+        .queue-item.done .name { text-decoration: line-through; color: #8a827a; }
+        .queue-item.next {
+            border-color: rgba(200,180,160,0.25);
+            background: rgba(255,255,255,0.04);
+            box-shadow: 0 0 20px rgba(200,180,160,0.03);
+        }
+        .queue-item.next .name { font-weight: 500; color: #f0e8e0; text-shadow: 0 0 20px rgba(200,180,160,0.1); }
+        .queue-item .index {
+            font-size: 0.7rem;
+            font-weight: 300;
+            color: #5a524a;
+            min-width: 1.8rem;
+            text-align: right;
+            letter-spacing: 0.5px;
+        }
+        .queue-item .name {
+            flex: 1;
+            font-size: 1rem;
+            color: #d4cec6;
+            word-break: break-word;
+            font-weight: 300;
+            letter-spacing: 0.3px;
+        }
+        /* ===== ЧЕКБОКСЫ - ПРОСТЫЕ И ВИДИМЫЕ ===== */
+        .queue-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            flex-shrink: 0;
+            accent-color: #6a8a6a;
+            opacity: 1 !important;
+            visibility: visible !important;
+            display: inline-block !important;
+            position: relative !important;
+            transform: none !important;
+            background: transparent;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 4px;
+            appearance: auto;
+            -webkit-appearance: checkbox;
+            -moz-appearance: checkbox;
+        }
+        .queue-item input[type="checkbox"]:checked {
+            accent-color: #6aaa6a;
+            border-color: #6aaa6a;
+        }
+        /* ===== КОНЕЦ ЧЕКБОКСОВ ===== */
+
+        .queue-item .delete-btn {
+            background: none;
+            border: none;
+            color: #4a423a;
+            font-size: 1.1rem;
+            cursor: pointer;
+            padding: 0 0.2rem;
+            transition: 0.15s;
+            line-height: 1;
+            opacity: 0.3;
+        }
+        .queue-item:hover .delete-btn { opacity: 0.6; }
+        .queue-item .delete-btn:hover { color: #b08070; opacity: 1; transform: scale(1.1); }
+
+        .finish-area {
+            margin-top: 2.5rem;
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .finish-btn {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.06);
+            color: #5a524a;
+            font-weight: 300;
+            padding: 0.7rem 2.4rem;
+            border-radius: 60px;
+            font-size: 0.9rem;
+            cursor: default;
+            transition: 0.2s;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            font-family: inherit;
+            opacity: 0.2;
+            pointer-events: none;
+            user-select: none;
+        }
+        .finish-btn.active {
+            opacity: 0.6;
+            pointer-events: auto;
+            cursor: pointer;
+            border-color: rgba(200,180,160,0.15);
+            color: #c8b8a8;
+        }
+        .finish-btn.active:hover {
+            opacity: 0.9;
+            border-color: rgba(200,180,160,0.3);
+            background: rgba(255,255,255,0.03);
+        }
+
+        .empty-msg {
+            color: #4a423a;
+            font-style: italic;
+            padding: 1rem 0.5rem;
+            font-weight: 300;
+            letter-spacing: 0.3px;
+            font-size: 0.9rem;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            font-size: 1.2rem;
+            color: #c8c0b8;
+            backdrop-filter: blur(4px);
+            transition: 0.3s;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .loading-overlay.visible { opacity: 1; pointer-events: auto; }
+        .loading-spinner {
+            border: 2px solid rgba(255,255,255,0.06);
+            border-top: 2px solid #8a7a6a;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin-right: 1rem;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .init-area {
+            text-align: center;
+            padding: 3rem 1rem;
+            background: rgba(255,255,255,0.02);
+            border-radius: 16px;
+            border: 1px dashed rgba(255,255,255,0.06);
+        }
+        .init-area h2 {
+            font-weight: 300;
+            color: #c8c0b8;
+            margin-bottom: 0.5rem;
+            font-size: 1.3rem;
+        }
+        .init-area p {
+            color: #5a524a;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+        }
+        .init-btn {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #d0c8c0;
+            padding: 0.8rem 2.5rem;
+            border-radius: 60px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.2s;
+            font-family: inherit;
+        }
+        .init-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(8px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9998;
+            opacity: 0;
+            pointer-events: none;
+            transition: 0.3s;
+        }
+        .modal-overlay.visible { opacity: 1; pointer-events: auto; }
+        .modal-content {
+            background: rgba(30,30,30,0.95);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            color: #e8e6e3;
+        }
+        .modal-content h2 {
+            font-weight: 300;
+            letter-spacing: 1px;
+            margin-bottom: 1.5rem;
+            font-size: 1.3rem;
+            color: #d4d0c8;
+        }
+        .modal-content input {
+            width: 100%;
+            padding: 0.7rem 1rem;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 40px;
+            font-size: 0.95rem;
+            outline: none;
+            background: rgba(255,255,255,0.03);
+            color: #e0dcd6;
+            font-family: inherit;
+            margin-bottom: 1rem;
+        }
+        .modal-content input:focus {
+            border-color: rgba(200,180,160,0.25);
+            background: rgba(255,255,255,0.05);
+        }
+        .modal-content .modal-buttons {
+            display: flex;
+            gap: 0.6rem;
+            justify-content: flex-end;
+        }
+        .modal-content .modal-buttons button {
+            padding: 0.6rem 1.6rem;
+            border-radius: 40px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: transparent;
+            color: #d0c8c0;
+            cursor: pointer;
+            transition: 0.2s;
+            font-family: inherit;
+        }
+        .modal-content .modal-buttons button:hover { background: rgba(255,255,255,0.05); }
+        .modal-content .modal-buttons .confirm-btn {
+            background: rgba(255,255,255,0.06);
+            border-color: rgba(200,180,160,0.15);
+        }
+        .modal-content .modal-buttons .confirm-btn:hover { background: rgba(255,255,255,0.1); }
+
+        @media (max-width: 600px) {
+            body { padding: 1rem 0.8rem; }
+            .episode-block { padding: 1rem; }
+            .episode-title { font-size: 1.1rem; }
+            .queue-item { flex-wrap: wrap; gap: 0.4rem; padding: 0.6rem 0.8rem; }
+            .queue-item .name { min-width: 100px; font-size: 0.9rem; }
+            .add-form input { min-width: 120px; font-size: 0.85rem; }
+            .add-form button { font-size: 0.85rem; padding: 0.5rem 1.2rem; }
+            .app-header h1 { font-size: 1.3rem; }
+            .app-header .status-group { font-size: 0.7rem; }
+            .episode-selector select { min-width: 140px; font-size: 0.85rem; }
+        }
+        @media (max-width: 400px) {
+            .queue-item .index { display: none; }
+            .queue-item .name { min-width: 70px; font-size: 0.85rem; }
+            .modal-content { padding: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="loading-overlay visible" id="loadingOverlay">
+    <div class="loading-spinner"></div>
+    <span id="loadingText">Подключение к Firebase...</span>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal-content">
+        <h2>Новый эпизод</h2>
+        <input type="text" id="newEpisodeTitle" placeholder="Название эпизода..." />
+        <input type="text" id="newEpisodeMeta" placeholder="Доп. информация..." />
+        <div class="modal-buttons">
+            <button id="modalCancel">Отмена</button>
+            <button class="confirm-btn" id="modalConfirm">Создать</button>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="app-header">
+        <h1>Очередь</h1>
+        <div class="status-group">
+            <span>
+                <span class="status-dot offline" id="statusDot"></span>
+                <span id="statusText">Offline</span>
+            </span>
+            <span id="counterDisplay">0 участников</span>
+        </div>
+    </div>
+
+    <div class="episode-selector">
+        <label for="episodeSelect">Эпизод:</label>
+        <select id="episodeSelect"></select>
+        <button class="add-ep-btn" id="addEpBtn">➕ Новый</button>
+        <button class="delete-ep-btn" id="deleteEpBtn">🗑 Удалить</button>
+    </div>
+
+    <div id="mainContent">
+        <div class="init-area" id="initArea">
+            <h2>📂 Нет данных</h2>
+            <p>Нажмите кнопку, чтобы загрузить 8 эпизодов с очередями</p>
+            <button class="init-btn" id="initBtn">Загрузить начальные эпизоды</button>
+        </div>
+
+        <div id="contentArea" style="display: none;">
+            <div class="episode-block">
+                <div class="episode-label">Редактировать</div>
+                <input class="episode-title" id="episodeTitle" placeholder="Название эпизода..." />
+                <input class="episode-meta" id="episodeMeta" placeholder="Дополнительно..." />
+            </div>
+
+            <div class="queue-section">
+                <div class="queue-header">
+                    <span>Очередь</span>
+                    <span class="badge" id="doneBadge">0 / 0</span>
+                </div>
+
+                <div class="add-form">
+                    <input type="text" id="newNameInput" placeholder="Имя персонажа..." />
+                    <button id="addBtn">Добавить</button>
+                </div>
+
+                <ul class="queue-list" id="queueList"></ul>
+            </div>
+
+            <div class="finish-area">
+                <button class="finish-btn" id="finishBtn">Завершить круг</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        const firebaseConfig = {
+            apiKey: "AIzaSyAR3nEI0L71ux5Yro_XM76O1IYKkReXWnE",
+            authDomain: "queue-tracker-ff855.firebaseapp.com",
+            databaseURL: "https://queue-tracker-ff855-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "queue-tracker-ff855",
+            storageBucket: "queue-tracker-ff855.firebasestorage.app",
+            messagingSenderId: "545216354720",
+            appId: "1:545216354720:web:f57c376b87e3924f232cc5",
+            measurementId: "G-D3JQR37F9E"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const STATE_KEY = 'queueData';
+
+        let fullData = null;
+
+        // DOM
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const episodeSelect = document.getElementById('episodeSelect');
+        const episodeTitleEl = document.getElementById('episodeTitle');
+        const episodeMetaEl = document.getElementById('episodeMeta');
+        const queueList = document.getElementById('queueList');
+        const newNameInput = document.getElementById('newNameInput');
+        const addBtn = document.getElementById('addBtn');
+        const finishBtn = document.getElementById('finishBtn');
+        const counterDisplay = document.getElementById('counterDisplay');
+        const doneBadge = document.getElementById('doneBadge');
+        const initArea = document.getElementById('initArea');
+        const contentArea = document.getElementById('contentArea');
+        const initBtn = document.getElementById('initBtn');
+        const addEpBtn = document.getElementById('addEpBtn');
+        const deleteEpBtn = document.getElementById('deleteEpBtn');
+        const modalOverlay = document.getElementById('modalOverlay');
+        const newEpisodeTitle = document.getElementById('newEpisodeTitle');
+        const newEpisodeMeta = document.getElementById('newEpisodeMeta');
+        const modalCancel = document.getElementById('modalCancel');
+        const modalConfirm = document.getElementById('modalConfirm');
+
+        function setStatus(online) {
+            if (online) {
+                statusDot.className = 'status-dot online';
+                statusText.textContent = 'Online';
+            } else {
+                statusDot.className = 'status-dot offline';
+                statusText.textContent = 'Offline';
+            }
+        }
+
+        database.ref('.info/connected').on('value', (snap) => {
+            setStatus(snap.val());
+            if (snap.val()) {
+                loadingOverlay.classList.remove('visible');
+            }
+        });
+
+        function getDefaultData() {
+            return {
+                currentEpisode: 'ep8',
+                episodes: {
+                    'ep1': {
+                        title: 'Ep.1.2. Сталь, кровь и пепел: Турнир',
+                        meta: 'конец 3 месяца 302 З.Э.',
+                        players: [
+                            { name: 'HUGH OF THE VALE', done: false },
+                            { name: 'DONTOS HOLLARD', done: false },
+                            { name: 'SANDOR CLEGANE - BRIENNE OF TARTH', done: false },
+                            { name: 'MACE TYRELL - ROBB STARK', done: false },
+                            { name: 'LUCAS CORBRAY - GREGOR CLEGANE', done: false }
+                        ]
+                    },
+                    'ep2': {
+                        title: 'Ep.2. Сталь, кровь и пепел: Цена одного слова',
+                        meta: 'конец 3 месяца 302 З.Э.',
+                        players: [
+                            { name: 'RHAEGAR TARGARYEN', done: false },
+                            { name: 'STANNIS BARATHEON', done: false },
+                            { name: 'VISERYS TARGARYEN', done: false },
+                            { name: 'HARMEN ULLER', done: false },
+                            { name: 'CLEA ULLER', done: false },
+                            { name: 'RHAENYS TARGARYEN', done: false }
+                        ]
+                    },
+                    'ep3': {
+                        title: 'Ep.3. Сталь, кровь и пепел: Горький мёд',
+                        meta: 'конец 3 месяца 302 З.Э.',
+                        players: [
+                            { name: 'ASHARA DAYNE', done: false },
+                            { name: 'NAERYS SANTAGAR', done: false },
+                            { name: 'LUCAS CORBRAY', done: false },
+                            { name: 'ADIA', done: false }
+                        ]
+                    },
+                    'ep4': {
+                        title: 'Ep.4. Сталь, кровь и пепел: По следам чернил',
+                        meta: 'конец 3 месяца 302 З.Э.',
+                        players: [
+                            { name: 'AEGON TARGARYEN', done: false },
+                            { name: 'DAENERYS TARGARYEN', done: false },
+                            { name: 'RENLY BARATHEON', done: false },
+                            { name: 'ARTHUR DAYNE', done: false },
+                            { name: 'AEGON BLACKFYRE', done: false },
+                            { name: 'ALYSSA VELARYON', done: false }
+                        ]
+                    },
+                    'ep5': {
+                        title: 'Ep.5. Сталь, кровь и пепел: Рифмы стали и шёлка',
+                        meta: 'конец 3 месяца 302 З.Э.',
+                        players: [
+                            { name: 'WILLAS TYRELL', done: false },
+                            { name: 'NAERYS SANTAGAR', done: false },
+                            { name: 'SANSA STARK', done: false },
+                            { name: 'STANNIS BARATHEON', done: false },
+                            { name: 'JEYNE BARATHEON', done: false },
+                            { name: 'RHAENYS TARGARYEN', done: false }
+                        ]
+                    },
+                    'ep7': {
+                        title: 'Ep.7. Сталь, кровь и пепел: Плач над камнем',
+                        meta: 'конец 3 месяца 302 З.Э.',
+                        players: [
+                            { name: 'WILLAS TYRELL', done: false },
+                            { name: 'MORNA ROYCE', done: false },
+                            { name: 'RENLY BARATHEON', done: false },
+                            { name: 'ELINOR TYRELL', done: false },
+                            { name: 'ARYA STARK', done: false }
+                        ]
+                    },
+                    'ep8': {
+                        title: 'Ep.8. Сталь, кровь и пепел: Шепот в ночи',
+                        meta: 'конец 3 месяца 302 З.Э.',
+                        players: [
+                            { name: 'DAEMON BLACKFYRE', done: false },
+                            { name: 'ALYSSA VELARYON', done: false },
+                            { name: 'RHAENYS TARGARYEN', done: false },
+                            { name: 'LIVEN MARTELL', done: false },
+                            { name: 'TRISTON HIGHTOWER', done: false },
+                            { name: 'ROS', done: false },
+                            { name: 'AELYX CELTIGAR', done: false }
+                        ]
+                    }
+                }
+            };
+        }
+
+        function saveToFirebase() {
+            if (!fullData) return;
+            database.ref(STATE_KEY).set(fullData).catch((error) => {
+                console.error('Ошибка сохранения:', error);
+            });
+        }
+
+        function loadFromFirebase() {
+            database.ref(STATE_KEY).once('value').then((snapshot) => {
+                const val = snapshot.val();
+                if (val) {
+                    fullData = val;
+                    if (!fullData.episodes) fullData.episodes = {};
+                    if (!fullData.currentEpisode) {
+                        const keys = Object.keys(fullData.episodes);
+                        fullData.currentEpisode = keys.length > 0 ? keys[0] : null;
+                    }
+                    showContent(true);
+                    renderAll();
+                } else {
+                    showContent(false);
+                }
+                loadingOverlay.classList.remove('visible');
+            }).catch((error) => {
+                console.error('Ошибка загрузки:', error);
+                loadingOverlay.classList.remove('visible');
+                showContent(false);
+            });
+        }
+
+        function showContent(hasData) {
+            if (hasData) {
+                initArea.style.display = 'none';
+                contentArea.style.display = 'block';
+            } else {
+                initArea.style.display = 'block';
+                contentArea.style.display = 'none';
+                episodeSelect.innerHTML = '<option value="">— Нет данных —</option>';
+            }
+        }
+
+        function renderEpisodeSelect() {
+            if (!fullData) return;
+            const current = fullData.currentEpisode;
+            const keys = Object.keys(fullData.episodes);
+            
+            episodeSelect.innerHTML = '';
+            if (keys.length === 0) {
+                const opt = document.createElement('option');
+                opt.value = '';
+                opt.textContent = '— Нет эпизодов —';
+                episodeSelect.appendChild(opt);
+                return;
+            }
+
+            keys.forEach(key => {
+                const opt = document.createElement('option');
+                opt.value = key;
+                const ep = fullData.episodes[key];
+                opt.textContent = ep.title || key;
+                if (key === current) opt.selected = true;
+                episodeSelect.appendChild(opt);
+            });
+
+            if (current && keys.includes(current)) {
+                episodeSelect.value = current;
+            } else if (keys.length > 0) {
+                episodeSelect.value = keys[0];
+                fullData.currentEpisode = keys[0];
+            }
+        }
+
+        function getCurrentEpisode() {
+            if (!fullData) return null;
+            const id = episodeSelect.value;
+            if (!id || !fullData.episodes[id]) return null;
+            return { id, data: fullData.episodes[id] };
+        }
+
+        function renderAll() {
+            if (!fullData) return;
+            
+            renderEpisodeSelect();
+            const ep = getCurrentEpisode();
+            
+            if (!ep) {
+                episodeTitleEl.value = '';
+                episodeMetaEl.value = '';
+                queueList.innerHTML = '<li class="empty-msg">Нет эпизодов. Создайте новый.</li>';
+                counterDisplay.textContent = '0 участников';
+                doneBadge.textContent = '0 / 0';
+                finishBtn.classList.remove('active');
+                finishBtn.textContent = 'Нет эпизодов';
+                return;
+            }
+
+            const data = ep.data;
+            episodeTitleEl.value = data.title || '';
+            episodeMetaEl.value = data.meta || '';
+
+            const players = data.players || [];
+            const total = players.length;
+            const doneCount = players.filter(p => p.done).length;
+            const allDone = total > 0 && doneCount === total;
+
+            counterDisplay.textContent = `${total} участников`;
+            doneBadge.textContent = `${doneCount} / ${total}`;
+
+            let nextIndex = -1;
+            for (let i = 0; i < total; i++) {
+                if (!players[i].done) {
+                    nextIndex = i;
+                    break;
+                }
+            }
+
+            queueList.innerHTML = '';
+            if (total === 0) {
+                const empty = document.createElement('li');
+                empty.className = 'empty-msg';
+                empty.textContent = 'Очередь пуста. Добавьте участников.';
+                queueList.appendChild(empty);
+            } else {
+                players.forEach((p, idx) => {
+                    const li = document.createElement('li');
+                    li.className = 'queue-item';
+
+                    if (p.done) {
+                        li.classList.add('done');
+                    } else if (idx === nextIndex) {
+                        li.classList.add('next');
+                    }
+
+                    const indexSpan = document.createElement('span');
+                    indexSpan.className = 'index';
+                    indexSpan.textContent = `#${idx + 1}`;
+                    li.appendChild(indexSpan);
+
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className = 'name';
+                    nameSpan.textContent = p.name || '?';
+                    li.appendChild(nameSpan);
+
+                    // ПРОСТОЙ ЧЕКБОКС — БЕЗ КАСТОМНЫХ СТИЛЕЙ
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.checked = p.done;
+                    cb.style.width = '20px';
+                    cb.style.height = '20px';
+                    cb.style.cursor = 'pointer';
+                    cb.style.flexShrink = '0';
+    cb.style.accentColor = '#6a8a6a';
+                    cb.style.opacity = '1';
+                    cb.style.visibility = 'visible';
+                    cb.style.display = 'inline-block';
+                    cb.style.position = 'relative';
+                    cb.style.transform = 'none';
+                    
+                    cb.addEventListener('change', function(e) {
+                        e.stopPropagation();
+                        p.done = cb.checked;
+                        saveToFirebase();
+                        renderAll();
+                    });
+                    li.appendChild(cb);
+
+                    const delBtn = document.createElement('button');
+                    delBtn.className = 'delete-btn';
+                    delBtn.textContent = '✕';
+                    delBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        if (confirm(`Удалить "${p.name}"?`)) {
+                            data.players.splice(idx, 1);
+                            saveToFirebase();
+                            renderAll();
+                        }
+                    });
+                    li.appendChild(delBtn);
+
+                    queueList.appendChild(li);
+                });
+            }
+
+            if (total > 0 && allDone) {
+                finishBtn.classList.add('active');
+                finishBtn.textContent = 'Завершить круг';
+            } else {
+                finishBtn.classList.remove('active');
+                if (total === 0) {
+                    finishBtn.textContent = 'Нет участников';
+                } else {
+                    finishBtn.textContent = `${total - doneCount} осталось`;
+                }
+            }
+        }
+
+        function initDefaultData() {
+            fullData = getDefaultData();
+            saveToFirebase();
+            showContent(true);
+            renderAll();
+        }
+
+        initBtn.addEventListener('click', initDefaultData);
+
+        episodeTitleEl.addEventListener('input', function() {
+            if (!fullData) return;
+            const id = episodeSelect.value;
+            if (id && fullData.episodes[id]) {
+                fullData.episodes[id].title = episodeTitleEl.value;
+                saveToFirebase();
+                renderEpisodeSelect();
+            }
+        });
+
+        episodeMetaEl.addEventListener('input', function() {
+            if (!fullData) return;
+            const id = episodeSelect.value;
+            if (id && fullData.episodes[id]) {
+                fullData.episodes[id].meta = episodeMetaEl.value;
+                saveToFirebase();
+            }
+        });
+
+        episodeSelect.addEventListener('change', function() {
+            if (!fullData) return;
+            fullData.currentEpisode = episodeSelect.value;
+            saveToFirebase();
+            renderAll();
+        });
+
+        function addPlayer() {
+            const raw = newNameInput.value.trim();
+            if (!raw) {
+                alert('Введите имя персонажа.');
+                return;
+            }
+            const ep = getCurrentEpisode();
+            if (!ep) {
+                alert('Нет активного эпизода.');
+                return;
+            }
+            ep.data.players.push({ name: raw, done: false });
+            saveToFirebase();
+            renderAll();
+            newNameInput.value = '';
+            newNameInput.focus();
+        }
+
+        addBtn.addEventListener('click', addPlayer);
+        newNameInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addPlayer();
+            }
+        });
+
+        finishBtn.addEventListener('click', function() {
+            const ep = getCurrentEpisode();
+            if (!ep) return;
+            const players = ep.data.players;
+            const total = players.length;
+            if (total === 0) return;
+            const doneCount = players.filter(p => p.done).length;
+            if (doneCount !== total) {
+                alert('Не все отписались!');
+                return;
+            }
+            for (let p of players) {
+                p.done = false;
+            }
+            saveToFirebase();
+            renderAll();
+        });
+
+        function openModal() {
+            newEpisodeTitle.value = '';
+            newEpisodeMeta.value = '';
+            modalOverlay.classList.add('visible');
+            setTimeout(() => newEpisodeTitle.focus(), 100);
+        }
+
+        function closeModal() {
+            modalOverlay.classList.remove('visible');
+        }
+
+        function createEpisode() {
+            const title = newEpisodeTitle.value.trim() || 'Новый эпизод';
+            const meta = newEpisodeMeta.value.trim() || '';
+            const id = 'ep' + Date.now();
+            fullData.episodes[id] = {
+                title: title,
+                meta: meta,
+                players: []
+            };
+            fullData.currentEpisode = id;
+            saveToFirebase();
+            renderAll();
+            closeModal();
+        }
+
+        addEpBtn.addEventListener('click', openModal);
+        modalCancel.addEventListener('click', closeModal);
+        modalConfirm.addEventListener('click', createEpisode);
+        modalOverlay.addEventListener('click', function(e) {
+            if (e.target === modalOverlay) closeModal();
+        });
+        newEpisodeTitle.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                newEpisodeMeta.focus();
+            }
+        });
+        newEpisodeMeta.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                createEpisode();
+            }
+        });
+
+        deleteEpBtn.addEventListener('click', function() {
+            if (!fullData) return;
+            const id = episodeSelect.value;
+            if (!id || !fullData.episodes[id]) return;
+            if (!confirm(`Удалить эпизод "${fullData.episodes[id].title}"?`)) return;
+            
+            delete fullData.episodes[id];
+            const keys = Object.keys(fullData.episodes);
+            if (keys.length > 0) {
+                fullData.currentEpisode = keys[0];
+            } else {
+                fullData.currentEpisode = null;
+            }
+            saveToFirebase();
+            renderAll();
+        });
+
+        loadFromFirebase();
+    })();
+</script>
+
+</body>
+</html>
