@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Очередь</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 4px 0;
+            font-family: inherit;
+            background: transparent;
+            color: inherit;
+            font-size: inherit;
+            line-height: 1.4;
+        }
+        #queue-container {
+            padding: 0;
+        }
+        .queue-item {
+            padding: 2px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .queue-item:last-child {
+            border-bottom: none;
+        }
+        .loading {
+            text-align: center;
+            opacity: 0.6;
+            padding: 8px;
+        }
+        .error {
+            text-align: center;
+            color: #cc6666;
+        }
+    </style>
+</head>
+<body>
+    <div id="queue-container">
+        <div class="loading">Загрузка очереди...</div>
+    </div>
+
+    <script>
+    (function() {
+        const container = document.getElementById('queue-container');
+        if (!container) return;
+
+        // ============================================================
+        // КОНФИГ FIREBASE (ваш)
+        // ============================================================
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyAR3nEI0L71ux5Yro_XM76O1IYKkReXWnE",
+            authDomain: "queue-tracker-ff855.firebaseapp.com",
+            databaseURL: "https://queue-tracker-ff855-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "queue-tracker-ff855",
+            storageBucket: "queue-tracker-ff855.firebasestorage.app",
+            messagingSenderId: "545216354720",
+            appId: "1:545216354720:web:f57c376b87e3924f232cc5",
+            measurementId: "G-D3JQR37F9E"
+        };
+        // ============================================================
+
+        // Загружаем Firebase SDK
+        function loadFirebase() {
+            if (typeof firebase !== 'undefined') {
+                initFirebase();
+                return;
+            }
+
+            const script1 = document.createElement('script');
+            script1.src = 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js';
+            script1.onload = function() {
+                const script2 = document.createElement('script');
+                script2.src = 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js';
+                script2.onload = function() {
+                    initFirebase();
+                };
+                script2.onerror = function() {
+                    container.innerHTML = '<div class="error">⚠️ Ошибка загрузки Firebase</div>';
+                };
+                document.head.appendChild(script2);
+            };
+            script1.onerror = function() {
+                container.innerHTML = '<div class="error">⚠️ Ошибка загрузки Firebase</div>';
+            };
+            document.head.appendChild(script1);
+        }
+
+        function initFirebase() {
+            try {
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(FIREBASE_CONFIG);
+                }
+
+                const db = firebase.database();
+                const ref = db.ref('queueData');
+
+                // Подписываемся на изменения в реальном времени
+                ref.on('value', function(snapshot) {
+                    const data = snapshot.val();
+                    if (data) {
+                        renderQueue(data);
+                    } else {
+                        container.innerHTML = '<div class="loading">Нет данных</div>';
+                    }
+                }, function(error) {
+                    console.error('Firebase error:', error);
+                    container.innerHTML = '<div class="error">⚠️ Ошибка подключения</div>';
+                });
+
+            } catch (e) {
+                console.error('Init error:', e);
+                container.innerHTML = '<div class="error">⚠️ Ошибка инициализации</div>';
+            }
+        }
+
+        function renderQueue(data) {
+            const episodes = data.episodes || {};
+            const keys = Object.keys(episodes).sort(function(a, b) {
+                const numA = parseFloat(a.replace('ep', ''));
+                const numB = parseFloat(b.replace('ep', ''));
+                return numA - numB;
+            });
+
+            if (keys.length === 0) {
+                container.innerHTML = '<div class="loading">Нет эпизодов</div>';
+                return;
+            }
+
+            let html = '';
+
+            keys.forEach(function(key) {
+                const ep = episodes[key];
+                if (!ep) return;
+
+                const players = ep.players || [];
+                const title = ep.title || 'Без названия';
+                const meta = ep.meta || '';
+
+                let current = null;
+                for (let p of players) {
+                    if (!p.done && !p.skipped) {
+                        current = p;
+                        break;
+                    }
+                }
+
+                if (!current && players.length > 0) {
+                    current = players[0];
+                }
+
+                const currentName = current ? current.name : '—';
+
+                let line = title;
+                if (meta) line += ' (' + meta + ')';
+                line += ' — ' + currentName;
+
+                html += '<div class="queue-item">' + line + '</div>';
+            });
+
+            container.innerHTML = html;
+        }
+
+        // Запускаем
+        loadFirebase();
+
+    })();
+    </script>
+</body>
+</html>
