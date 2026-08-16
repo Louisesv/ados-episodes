@@ -1,0 +1,104 @@
+<!-- ================================================================ -->
+<!-- ВИДЖЕТ ОЧЕРЕДИ — финальная версия с REST API                   -->
+<!-- ================================================================ -->
+
+<div id="queue-widget">
+  <div style="text-align:center; opacity:0.6; padding:8px;">Загрузка очереди...</div>
+</div>
+
+<script>
+// ================================================================
+// 1. КОНФИГ
+// ================================================================
+const DB_URL = 'https://queue-tracker-ff855-default-rtdb.europe-west1.firebasedatabase.app/queueData.json';
+// ================================================================
+
+// ================================================================
+// 2. ЗАГРУЗКА ДАННЫХ
+// ================================================================
+(function() {
+  var container = document.getElementById('queue-widget');
+  if (!container) return;
+
+  function loadData() {
+    container.innerHTML = '<div style="text-align:center; opacity:0.6; padding:8px;">Загрузка...</div>';
+
+    var url = DB_URL + '?t=' + Date.now();
+
+    fetch(url)
+      .then(function(response) {
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        return response.json();
+      })
+      .then(function(data) {
+        console.log('📥 Данные из Firebase:', data);
+        if (data && data.episodes) {
+          render(data);
+        } else {
+          container.innerHTML = '<div style="text-align:center; opacity:0.5; padding:8px;">Нет данных (проверьте консоль)</div>';
+          console.warn('⚠️ Нет данных или поле episodes отсутствует');
+        }
+      })
+      .catch(function(error) {
+        console.error('❌ Ошибка:', error);
+        container.innerHTML = '<div style="text-align:center; color:#cc6666; padding:8px;">⚠️ Ошибка загрузки: ' + error.message + '</div>';
+      });
+  }
+
+  // ================================================================
+  // 3. ОТОБРАЖЕНИЕ
+  // ================================================================
+  function render(data) {
+    var episodes = data.episodes || {};
+    var keys = Object.keys(episodes).sort(function(a, b) {
+      var numA = parseFloat(a.replace('ep', ''));
+      var numB = parseFloat(b.replace('ep', ''));
+      return numA - numB;
+    });
+
+    if (keys.length === 0) {
+      container.innerHTML = '<div style="text-align:center; opacity:0.5; padding:8px;">Нет эпизодов</div>';
+      return;
+    }
+
+    var html = '';
+
+    keys.forEach(function(key) {
+      var ep = episodes[key];
+      if (!ep) return;
+
+      var players = ep.players || [];
+      var title = ep.title || 'Без названия';
+      var meta = ep.meta || '';
+
+      // Находим первого, кто не отписался и не пропустил
+      var current = null;
+      for (var i = 0; i < players.length; i++) {
+        var p = players[i];
+        console.log('  👤 ' + p.name + ' — done: ' + p.done + ', skipped: ' + (p.skipped || false));
+        if (!p.done && !p.skipped) {
+          current = p;
+          break;
+        }
+      }
+
+      // Если все отписались — берём первого
+      if (!current && players.length > 0) {
+        current = players[0];
+        console.log('  ⚠️ Все отписались, берём первого: ' + current.name);
+      }
+
+      var currentName = current ? current.name : '—';
+      console.log('  ✅ Текущий: ' + currentName);
+
+      var line = title;
+      if (meta) line += ' (' + meta + ')';
+      line += ' — ' + currentName;
+
+      html += '<div style="padding:3px 0; border-bottom:1px solid rgba(255,255,255,0.05);">' + line + '</div>';
+    });
+
+    container.innerHTML = html;
+    console.log('✅ Отображено ' + keys.length + ' эпизодов');
+  }
+
