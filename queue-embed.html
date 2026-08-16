@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Очередь</title>
+    <style>
+        /* Полностью убираем отступы и фон */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: transparent;
+            font-family: -apple-system, 'Segoe UI', Roboto, system-ui, sans-serif;
+            color: #e0dcd6;
+            padding: 0;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        #queue {
+            padding: 2px 0;
+        }
+        .queue-item {
+            padding: 2px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .queue-item:last-child {
+            border-bottom: none;
+        }
+        .loading, .error {
+            text-align: center;
+            opacity: 0.6;
+            padding: 4px 0;
+            font-size: 12px;
+        }
+        .error {
+            color: #cc6666;
+            opacity: 1;
+        }
+        /* Статус подключения — маленький индикатор */
+        .status-bar {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="queue">
+        <div class="loading">⏳ Загрузка...</div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+    <script>
+    // ================================================================
+    // КОНФИГ FIREBASE
+    // ================================================================
+    const FIREBASE_CONFIG = {
+        apiKey: "AIzaSyAR3nEI0L71ux5Yro_XM76O1IYKkReXWnE",
+        authDomain: "queue-tracker-ff855.firebaseapp.com",
+        databaseURL: "https://queue-tracker-ff855-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "queue-tracker-ff855",
+        storageBucket: "queue-tracker-ff855.firebasestorage.app",
+        messagingSenderId: "545216354720",
+        appId: "1:545216354720:web:f57c376b87e3924f232cc5",
+        measurementId: "G-D3JQR37F9E"
+    };
+    // ================================================================
+
+    var container = document.getElementById('queue');
+
+    // Инициализация Firebase
+    if (!firebase.apps.length) {
+        firebase.initializeApp(FIREBASE_CONFIG);
+    }
+    var db = firebase.database();
+
+    // ================================================================
+    // ПРАВИЛЬНЫЙ ПУТЬ: queueDataAdvanced
+    // ================================================================
+    var ref = db.ref('queueDataAdvanced');
+
+    ref.on('value', function(snapshot) {
+        var data = snapshot.val();
+        if (data && data.episodes) {
+            render(data);
+        } else {
+            container.innerHTML = '<div class="error">⚠️ Нет данных</div>';
+        }
+    }, function(error) {
+        container.innerHTML = '<div class="error">⚠️ Ошибка</div>';
+    });
+
+    // ================================================================
+    // ОТОБРАЖЕНИЕ (компактное)
+    // ================================================================
+    function render(data) {
+        var episodes = data.episodes || {};
+        var keys = Object.keys(episodes).sort(function(a, b) {
+            var numA = parseFloat(a.replace('ep', ''));
+            var numB = parseFloat(b.replace('ep', ''));
+            return numA - numB;
+        });
+
+        if (keys.length === 0) {
+            container.innerHTML = '<div class="loading">Нет эпизодов</div>';
+            return;
+        }
+
+        var html = '';
+
+        keys.forEach(function(key) {
+            var ep = episodes[key];
+            if (!ep) return;
+
+            var players = ep.players || [];
+            var title = ep.title || 'Без названия';
+            var meta = ep.meta || '';
+
+            var current = null;
+            for (var i = 0; i < players.length; i++) {
+                if (!players[i].done && !players[i].skipped) {
+                    current = players[i];
+                    break;
+                }
+            }
+            if (!current && players.length > 0) {
+                current = players[0];
+            }
+
+            var name = current ? current.name : '—';
+            var line = title + (meta ? ' (' + meta + ')' : '') + ' — ' + name;
+
+            html += '<div class="queue-item">' + line + '</div>';
+        });
+
+        container.innerHTML = html;
+    }
+    </script>
+</body>
+</html>
+```
+
+</BDS:LONG_WORK>
+
+---
+
+## 📦 **Шаг 2: Код для вставки в форум**
+
+В вашем блоке `bestpost` вставьте **iframe**:
+
+```
+<!------------------ описание ------------>
+<div class="bestpost">
+  <span> лучший пост от <a href="https://godless.rusff.me/viewtopic.php?id=91#p4548">Элинор</a> </span>
+  
+  <p>
+    Повисла тишина... (ваш текст)
+  </p>
+
+  <!-- ============================================================ -->
+  <!-- ВИДЖЕТ ОЧЕРЕДИ через iframe                                   -->
+  <!-- ============================================================ -->
+  <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.06);">
+    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #6b7280; margin-bottom: 4px;">
+      📋 Очередь эпизодов
+    </div>
+    <iframe 
+      src="https://louisesv.github.io/ados-episodes/queue-embed.html" 
+      style="
+        width: 100%; 
+        border: none; 
+        overflow: hidden;
+        background: transparent;
+        min-height: 80px;
+        height: auto;
+      "
+      scrolling="no"
+      frameborder="0"
+      id="queue-iframe"
+      onload="this.style.height=this.contentWindow.document.body.scrollHeight+4+'px'"
+    ></iframe>
+  </div>
+  <!-- ============================================================ -->
+  
+</div>
+```
+
+---
+
+## 🔧 **Шаг 3: Скрипт для автоматической подстройки высоты iframe**
+
+Добавьте этот скрипт **в конец страницы** (или в шапку форума), чтобы iframe автоматически подстраивался под содержимое:
+
+```
+<script>
+// Автоматическая подстройка высоты iframe
+(function() {
+    var iframe = document.getElementById('queue-iframe');
+    if (!iframe) return;
+    
+    function resize() {
+        try {
+            if (iframe.contentWindow.document.body) {
+                var height = iframe.contentWindow.document.body.scrollHeight;
+                iframe.style.height = Math.max(height + 8, 60) + 'px';
+            }
+        } catch(e) {}
+    }
+    
+    // При загрузке
+    iframe.addEventListener('load', function() {
+        setTimeout(resize, 100);
+        setTimeout(resize, 500);
+    });
+    
+    // Каждые 2 секунды проверяем (на случай, если контент изменился)
+    setInterval(resize, 2000);
+})();
+</script>
+```
+
+---
+
+## ✅ **Готово!**
+
+Теперь у вас:
+
+- **Чистый виджет** без лишних элементов
+- **Автоматическая подстройка высоты** iframe
+- **Обновление в реальном времени** через Firebase SDK
+- **Аккуратный внешний вид** в шапке форума
+
+---
+
+## 📝 **Если хотите изменить внешний вид:**
+
+В файле `queue-embed.html` можно поменять:
+
+- **Цвет текста**: `color: #e0dcd6;`
+- **Размер шрифта**: `font-size: 13px;`
+- **Разделители**: `border-bottom: 1px solid rgba(255,255,255,0.04);`
+
+---
+
+**Попробуйте вставить! Если что-то нужно поправить — напишите.** 🚀
