@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Тест Firebase</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #0d0d1a;
+            color: #e0dcd6;
+            padding: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .data-box {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            word-break: break-all;
+            font-size: 12px;
+            max-height: 400px;
+            overflow: auto;
+        }
+        .status {
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin: 4px 0;
+        }
+        .status.ok { background: rgba(16,185,129,0.15); color: #10b981; }
+        .status.err { background: rgba(239,68,68,0.15); color: #ef4444; }
+        .status.loading { background: rgba(79,70,229,0.15); color: #818cf8; }
+        button {
+            background: #4f46e5;
+            border: none;
+            color: #fff;
+            padding: 8px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover { background: #4338ca; }
+        .raw-json {
+            background: rgba(0,0,0,0.3);
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            overflow: auto;
+            max-height: 300px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Тест Firebase</h1>
+    <p>Проверяем, какие данные приходят из Firebase</p>
+
+    <div id="log">
+        <div class="status loading">⏳ Загрузка данных...</div>
+    </div>
+
+    <button onclick="loadData()">🔄 Обновить</button>
+    <button onclick="loadDataDirect()">📡 Прямой REST-запрос</button>
+
+    <h3>📋 Сырые данные из Firebase:</h3>
+    <div class="data-box" id="rawData">Ожидание загрузки...</div>
+
+    <h3>📋 Распарсенная очередь:</h3>
+    <div class="data-box" id="parsedData">Ожидание загрузки...</div>
+
+    <script>
+        // ============================================================
+        // КОНФИГ FIREBASE
+        // ============================================================
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyAR3nEI0L71ux5Yro_XM76O1IYKkReXWnE",
+            authDomain: "queue-tracker-ff855.firebaseapp.com",
+            databaseURL: "https://queue-tracker-ff855-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "queue-tracker-ff855",
+            storageBucket: "queue-tracker-ff855.firebasestorage.app",
+            messagingSenderId: "545216354720",
+            appId: "1:545216354720:web:f57c376b87e3924f232cc5",
+            measurementId: "G-D3JQR37F9E"
+        };
+        // ============================================================
+
+        const log = document.getElementById('log');
+        const rawDataEl = document.getElementById('rawData');
+        const parsedDataEl = document.getElementById('parsedData');
+
+        let db = null;
+
+        // --- Загружаем Firebase SDK ---
+        function loadFirebaseSDK() {
+            return new Promise((resolve, reject) => {
+                if (typeof firebase !== 'undefined') {
+                    resolve();
+                    return;
+                }
+                const s1 = document.createElement('script');
+                s1.src = 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js';
+                s1.onload = function() {
+                    const s2 = document.createElement('script');
+                    s2.src = 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js';
+                    s2.onload = function() { resolve(); };
+                    s2.onerror = function() { reject('Ошибка загрузки Database'); };
+                    document.head.appendChild(s2);
+                };
+                s1.onerror = function() { reject('Ошибка загрузки Firebase'); };
+                document.head.appendChild(s1);
+            });
+        }
+
+        // --- Инициализация Firebase ---
+        async function initFirebase() {
+            try {
+                await loadFirebaseSDK();
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(FIREBASE_CONFIG);
+                }
+                db = firebase.database();
+                addLog('✅ Firebase инициализирован', 'ok');
+                return true;
+            } catch (e) {
+                addLog('❌ Ошибка: ' + e, 'err');
+                return false;
+            }
+        }
+
+        function addLog(msg, type) {
+            const div = document.createElement('div');
+            div.className = 'status ' + (type || 'loading');
+            div.textContent = msg;
+            log.appendChild(div);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        // --- Загрузка через Firebase SDK ---
+        window.loadData = async function() {
+            addLog('🔄 Загрузка через Firebase SDK...', 'loading');
+            rawDataEl.textContent = 'Загрузка...';
+            parsedDataEl.textContent = 'Загрузка...';
+
+            if (!db) {
+                const ok = await initFirebase();
+                if (!ok) return;
+            }
+
+            try {
+                const ref = db.ref('queueData');
+                const snapshot = await ref.once('value');
+                const data = snapshot.val();
+
+                if (data) {
+                    rawDataEl.textContent = JSON.stringify(data, null, 2);
+                    addLog('✅ Данные получены!', 'ok');
+                    parseAndShow(data);
+                } else {
+                    rawDataEl.textContent = '⚠️ Данных нет (null)';
+                    addLog('⚠️ Данных нет', 'err');
+                }
+            } catch (e) {
+                rawDataEl.textContent = '❌ Ошибка: ' + e.message;
+                addLog('❌ Ошибка: ' + e.message, 'err');
+                console.error(e);
+            }
+        };
+
+        // --- Загрузка через REST (прямой запрос) ---
+        window.loadDataDirect = function() {
+            addLog('📡 Прямой REST-запрос...', 'loading');
+            rawDataEl.textContent = 'Загрузка...';
+            parsedDataEl.textContent = 'Загрузка...';
+
+            const url = 'https://queue-tracker-ff855-default-rtdb.europe-west1.firebasedatabase.app/queueData.json?t=' + Date.now();
+
+            fetch(url)
+                .then(r => r.json())
+                .then(data => {
+                    if (data) {
+                        rawDataEl.textContent = JSON.stringify(data, null, 2);
+                        addLog('✅ REST-данные получены!', 'ok');
+                        parseAndShow(data);
+                    } else {
+                        rawDataEl.textContent = '⚠️ Данных нет (null)';
+                        addLog('⚠️ Данных нет', 'err');
+                    }
+                })
+                .catch(e => {
+                    rawDataEl.textContent = '❌ Ошибка: ' + e.message;
+                    addLog('❌ Ошибка REST: ' + e.message, 'err');
+                    console.error(e);
+                });
+        };
+
+        // --- Парсинг и отображение очереди ---
+        function parseAndShow(data) {
+            const episodes = data.episodes || {};
+            const keys = Object.keys(episodes).sort(function(a, b) {
+                return parseFloat(a.replace('ep', '')) - parseFloat(b.replace('ep', ''));
+            });
+
+            if (keys.length === 0) {
+                parsedDataEl.textContent = '⚠️ Нет эпизодов';
+                return;
+            }
+
+            let result = '';
+            keys.forEach(function(key) {
+                const ep = episodes[key];
+                if (!ep) return;
+
+                const players = ep.players || [];
+                const title = ep.title || 'Без названия';
+                const meta = ep.meta || '';
+
+                // Находим текущего
+                let current = null;
+                for (let p of players) {
+                    if (!p.done && !p.skipped) {
+                        current = p;
+                        break;
+                    }
+                }
+                if (!current && players.length > 0) {
+                    current = players[0];
+                }
+
+                const name = current ? current.name : '—';
+                result += title + (meta ? ' (' + meta + ')' : '') + ' — ' + name + '\n';
+            });
+
+            parsedDataEl.textContent = result;
+            addLog('✅ Очередь отображена (' + keys.length + ' эпизодов)', 'ok');
+        }
+
+        // --- Запуск при загрузке ---
+        (async function() {
+            addLog('🚀 Запуск теста...', 'loading');
+            await initFirebase();
+            setTimeout(loadData, 500);
+        })();
+
+        console.log('🔍 Тест запущен. Используйте кнопки для загрузки данных.');
+        console.log('📡 Если SDK не работает, попробуйте кнопку "Прямой REST-запрос"');
+    </script>
+</body>
+</html>
