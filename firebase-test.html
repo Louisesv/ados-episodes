@@ -9,7 +9,7 @@
             background: #0d0d1a;
             color: #e0dcd6;
             padding: 20px;
-            max-width: 900px;
+            max-width: 1000px;
             margin: 0 auto;
         }
         .data-box {
@@ -21,7 +21,7 @@
             white-space: pre-wrap;
             word-break: break-all;
             font-size: 12px;
-            max-height: 400px;
+            max-height: 500px;
             overflow: auto;
         }
         .status {
@@ -32,6 +32,7 @@
         .status.ok { background: rgba(16,185,129,0.15); color: #10b981; }
         .status.err { background: rgba(239,68,68,0.15); color: #ef4444; }
         .status.loading { background: rgba(79,70,229,0.15); color: #818cf8; }
+        .status.info { background: rgba(251,191,36,0.15); color: #fbbf24; }
         button {
             background: #4f46e5;
             border: none;
@@ -40,6 +41,7 @@
             border-radius: 6px;
             cursor: pointer;
             font-size: 14px;
+            margin: 4px;
         }
         button:hover { background: #4338ca; }
         .raw-json {
@@ -50,29 +52,44 @@
             overflow: auto;
             max-height: 300px;
         }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        th, td {
+            padding: 4px 8px;
+            border: 1px solid rgba(255,255,255,0.06);
+            text-align: left;
+        }
+        th {
+            background: rgba(255,255,255,0.03);
+            font-weight: 600;
+        }
+        .done-true { color: #10b981; }
+        .done-false { color: #ef4444; }
+        .skip-true { color: #fbbf24; }
+        .skip-false { color: #6b7280; }
+        .current { background: rgba(79,70,229,0.15); }
     </style>
 </head>
 <body>
-    <h1>🔍 Тест Firebase</h1>
-    <p>Проверяем, какие данные приходят из Firebase</p>
+    <h1>🔍 Тест Firebase — Детальный</h1>
+    <p>Показывает всех игроков и их статусы</p>
 
     <div id="log">
         <div class="status loading">⏳ Загрузка данных...</div>
     </div>
 
-    <button onclick="loadData()">🔄 Обновить</button>
-    <button onclick="loadDataDirect()">📡 Прямой REST-запрос</button>
+    <button onclick="loadData()">🔄 Загрузить</button>
+
+    <h3>📋 Все игроки с их статусами:</h3>
+    <div class="data-box" id="playersTable">Ожидание загрузки...</div>
 
     <h3>📋 Сырые данные из Firebase:</h3>
     <div class="data-box" id="rawData">Ожидание загрузки...</div>
 
-    <h3>📋 Распарсенная очередь:</h3>
-    <div class="data-box" id="parsedData">Ожидание загрузки...</div>
-
     <script>
-        // ============================================================
-        // КОНФИГ FIREBASE
-        // ============================================================
         const FIREBASE_CONFIG = {
             apiKey: "AIzaSyAR3nEI0L71ux5Yro_XM76O1IYKkReXWnE",
             authDomain: "queue-tracker-ff855.firebaseapp.com",
@@ -83,50 +100,10 @@
             appId: "1:545216354720:web:f57c376b87e3924f232cc5",
             measurementId: "G-D3JQR37F9E"
         };
-        // ============================================================
 
         const log = document.getElementById('log');
         const rawDataEl = document.getElementById('rawData');
-        const parsedDataEl = document.getElementById('parsedData');
-
-        let db = null;
-
-        // --- Загружаем Firebase SDK ---
-        function loadFirebaseSDK() {
-            return new Promise((resolve, reject) => {
-                if (typeof firebase !== 'undefined') {
-                    resolve();
-                    return;
-                }
-                const s1 = document.createElement('script');
-                s1.src = 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js';
-                s1.onload = function() {
-                    const s2 = document.createElement('script');
-                    s2.src = 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js';
-                    s2.onload = function() { resolve(); };
-                    s2.onerror = function() { reject('Ошибка загрузки Database'); };
-                    document.head.appendChild(s2);
-                };
-                s1.onerror = function() { reject('Ошибка загрузки Firebase'); };
-                document.head.appendChild(s1);
-            });
-        }
-
-        // --- Инициализация Firebase ---
-        async function initFirebase() {
-            try {
-                await loadFirebaseSDK();
-                if (!firebase.apps.length) {
-                    firebase.initializeApp(FIREBASE_CONFIG);
-                }
-                db = firebase.database();
-                addLog('✅ Firebase инициализирован', 'ok');
-                return true;
-            } catch (e) {
-                addLog('❌ Ошибка: ' + e, 'err');
-                return false;
-            }
-        }
+        const playersTableEl = document.getElementById('playersTable');
 
         function addLog(msg, type) {
             const div = document.createElement('div');
@@ -136,42 +113,10 @@
             log.scrollTop = log.scrollHeight;
         }
 
-        // --- Загрузка через Firebase SDK ---
-        window.loadData = async function() {
-            addLog('🔄 Загрузка через Firebase SDK...', 'loading');
+        window.loadData = function() {
+            addLog('🔄 Загрузка данных...', 'loading');
             rawDataEl.textContent = 'Загрузка...';
-            parsedDataEl.textContent = 'Загрузка...';
-
-            if (!db) {
-                const ok = await initFirebase();
-                if (!ok) return;
-            }
-
-            try {
-                const ref = db.ref('queueData');
-                const snapshot = await ref.once('value');
-                const data = snapshot.val();
-
-                if (data) {
-                    rawDataEl.textContent = JSON.stringify(data, null, 2);
-                    addLog('✅ Данные получены!', 'ok');
-                    parseAndShow(data);
-                } else {
-                    rawDataEl.textContent = '⚠️ Данных нет (null)';
-                    addLog('⚠️ Данных нет', 'err');
-                }
-            } catch (e) {
-                rawDataEl.textContent = '❌ Ошибка: ' + e.message;
-                addLog('❌ Ошибка: ' + e.message, 'err');
-                console.error(e);
-            }
-        };
-
-        // --- Загрузка через REST (прямой запрос) ---
-        window.loadDataDirect = function() {
-            addLog('📡 Прямой REST-запрос...', 'loading');
-            rawDataEl.textContent = 'Загрузка...';
-            parsedDataEl.textContent = 'Загрузка...';
+            playersTableEl.textContent = 'Загрузка...';
 
             const url = 'https://queue-tracker-ff855-default-rtdb.europe-west1.firebasedatabase.app/queueData.json?t=' + Date.now();
 
@@ -180,8 +125,8 @@
                 .then(data => {
                     if (data) {
                         rawDataEl.textContent = JSON.stringify(data, null, 2);
-                        addLog('✅ REST-данные получены!', 'ok');
-                        parseAndShow(data);
+                        addLog('✅ Данные получены!', 'ok');
+                        renderPlayersTable(data);
                     } else {
                         rawDataEl.textContent = '⚠️ Данных нет (null)';
                         addLog('⚠️ Данных нет', 'err');
@@ -189,24 +134,24 @@
                 })
                 .catch(e => {
                     rawDataEl.textContent = '❌ Ошибка: ' + e.message;
-                    addLog('❌ Ошибка REST: ' + e.message, 'err');
+                    addLog('❌ Ошибка: ' + e.message, 'err');
                     console.error(e);
                 });
         };
 
-        // --- Парсинг и отображение очереди ---
-        function parseAndShow(data) {
+        function renderPlayersTable(data) {
             const episodes = data.episodes || {};
             const keys = Object.keys(episodes).sort(function(a, b) {
                 return parseFloat(a.replace('ep', '')) - parseFloat(b.replace('ep', ''));
             });
 
             if (keys.length === 0) {
-                parsedDataEl.textContent = '⚠️ Нет эпизодов';
+                playersTableEl.textContent = '⚠️ Нет эпизодов';
                 return;
             }
 
-            let result = '';
+            let html = '';
+
             keys.forEach(function(key) {
                 const ep = episodes[key];
                 if (!ep) return;
@@ -215,35 +160,49 @@
                 const title = ep.title || 'Без названия';
                 const meta = ep.meta || '';
 
-                // Находим текущего
-                let current = null;
-                for (let p of players) {
-                    if (!p.done && !p.skipped) {
-                        current = p;
+                html += '<h4 style="margin: 12px 0 6px 0; color: #e0dcd6;">' + title + (meta ? ' (' + meta + ')' : '') + '</h4>';
+
+                if (players.length === 0) {
+                    html += '<div style="color: #6b7280; padding: 4px;">Нет игроков</div>';
+                    return;
+                }
+
+                html += '<table>';
+                html += '<tr><th>#</th><th>Имя</th><th>Отписался</th><th>Пропустил</th><th>Перебросы</th><th>Статус</th></tr>';
+
+                let currentIndex = -1;
+                for (let i = 0; i < players.length; i++) {
+                    if (!players[i].done && !players[i].skipped) {
+                        currentIndex = i;
                         break;
                     }
                 }
-                if (!current && players.length > 0) {
-                    current = players[0];
-                }
 
-                const name = current ? current.name : '—';
-                result += title + (meta ? ' (' + meta + ')' : '') + ' — ' + name + '\n';
+                players.forEach(function(p, idx) {
+                    const isCurrent = (idx === currentIndex);
+                    const rowClass = isCurrent ? 'current' : '';
+
+                    html += '<tr class="' + rowClass + '">';
+                    html += '<td>' + (idx + 1) + (isCurrent ? ' ⬅️' : '') + '</td>';
+                    html += '<td>' + (p.name || '—') + '</td>';
+                    html += '<td class="done-' + (p.done ? 'true' : 'false') + '">' + (p.done ? '✅ Да' : '❌ Нет') + '</td>';
+                    html += '<td class="skip-' + (p.skipped ? 'true' : 'false') + '">' + (p.skipped ? '⏭ Да' : '❌ Нет') + '</td>';
+                    html += '<td>' + (p.diceUsed || 0) + '/' + (p.maxDice || 2) + '</td>';
+                    html += '<td>' + (isCurrent ? '⏳ ТЕКУЩИЙ' : (p.done ? '✅ Отписался' : (p.skipped ? '⏭ Пропустил' : '⏳ Ожидание'))) + '</td>';
+                    html += '</tr>';
+                });
+
+                html += '</table>';
             });
 
-            parsedDataEl.textContent = result;
-            addLog('✅ Очередь отображена (' + keys.length + ' эпизодов)', 'ok');
+            playersTableEl.innerHTML = html;
+            addLog('✅ Таблица отображена', 'ok');
         }
 
-        // --- Запуск при загрузке ---
-        (async function() {
-            addLog('🚀 Запуск теста...', 'loading');
-            await initFirebase();
-            setTimeout(loadData, 500);
-        })();
+        // Автозагрузка
+        setTimeout(loadData, 500);
 
-        console.log('🔍 Тест запущен. Используйте кнопки для загрузки данных.');
-        console.log('📡 Если SDK не работает, попробуйте кнопку "Прямой REST-запрос"');
+        console.log('🔍 Тест запущен. Нажмите "Загрузить" для обновления.');
     </script>
 </body>
 </html>
