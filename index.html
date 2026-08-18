@@ -210,7 +210,6 @@
             border-bottom-color: #4f46e5;
         }
         
-        /* Заметки к эпизоду */
         .episode-notes {
             margin-top: 0.8rem;
         }
@@ -492,6 +491,38 @@
             background: #fecaca;
         }
         
+        /* ===== НОВЫЕ КНОПКИ ПЕРЕМЕЩЕНИЯ ===== */
+        .queue-item .move-btns {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            flex-shrink: 0;
+        }
+        .queue-item .move-btn {
+            background: none;
+            border: none;
+            color: #9ca3af;
+            cursor: pointer;
+            font-size: 0.7rem;
+            padding: 0 2px;
+            transition: 0.2s;
+            line-height: 1.2;
+            border-radius: 4px;
+        }
+        .queue-item .move-btn:hover {
+            color: #4f46e5;
+            background: #eef2ff;
+        }
+        .queue-item .move-btn:disabled {
+            opacity: 0.2;
+            cursor: not-allowed;
+        }
+        .queue-item .move-btn:disabled:hover {
+            color: #9ca3af;
+            background: none;
+        }
+        /* ===== КОНЕЦ НОВЫХ КНОПОК ===== */
+        
         .queue-item input[type="checkbox"] {
             width: 18px;
             height: 18px;
@@ -559,7 +590,6 @@
             box-shadow: 0 6px 20px rgba(79, 70, 229, 0.3);
         }
         
-        /* Лог */
         .log-section {
             margin-top: 2rem;
             border-top: 2px solid #f0f2f5;
@@ -931,6 +961,10 @@
             .log-container {
                 max-height: 200px;
             }
+            
+            .queue-item .move-btns {
+                flex-direction: row;
+            }
         }
     </style>
 </head>
@@ -1009,7 +1043,6 @@
                 <button class="finish-btn" id="finishBtn">Завершить круг</button>
             </div>
             
-            <!-- Лог -->
             <div class="log-section">
                 <div class="log-header">
                     <span class="title">📋 Лог кругов</span>
@@ -1295,7 +1328,6 @@
                 text: text,
                 timestamp: Date.now()
             });
-            // Ограничиваем лог 100 записями
             if (epData.log.length > 100) {
                 epData.log = epData.log.slice(-100);
             }
@@ -1312,7 +1344,6 @@
                 return;
             }
             
-            // Показываем в обратном порядке (свежие сверху)
             const entries = [...epData.log].reverse();
             entries.forEach(entry => {
                 const div = document.createElement('div');
@@ -1377,7 +1408,6 @@
             counterDisplay.textContent = `${total} участников`;
             doneBadge.textContent = `${doneCount} / ${total}`;
 
-            // Находим первого, кто не done и не skipped
             let nextIndex = -1;
             for (let i = 0; i < total; i++) {
                 if (!players[i].done && !players[i].skipped) {
@@ -1415,7 +1445,6 @@
                     nameSpan.textContent = p.name || '?';
                     li.appendChild(nameSpan);
 
-                    // Статус-бейдж
                     const statusBadge = document.createElement('span');
                     statusBadge.className = 'status-badge';
                     if (p.done) {
@@ -1432,11 +1461,34 @@
                     }
                     li.appendChild(statusBadge);
 
-                    // Действия
                     const actionsDiv = document.createElement('div');
                     actionsDiv.className = 'actions';
 
-                    // Кнопка "Отписался" — только если не done и не skipped
+                    // ===== НОВЫЕ КНОПКИ ПЕРЕМЕЩЕНИЯ =====
+                    const moveDiv = document.createElement('div');
+                    moveDiv.className = 'move-btns';
+                    
+                    const upBtn = document.createElement('button');
+                    upBtn.className = 'move-btn';
+                    upBtn.textContent = '↑';
+                    upBtn.disabled = idx === 0;
+                    upBtn.dataset.idx = idx;
+                    upBtn.dataset.dir = 'up';
+                    upBtn.title = 'Поднять выше';
+                    moveDiv.appendChild(upBtn);
+                    
+                    const downBtn = document.createElement('button');
+                    downBtn.className = 'move-btn';
+                    downBtn.textContent = '↓';
+                    downBtn.disabled = idx === total - 1;
+                    downBtn.dataset.idx = idx;
+                    downBtn.dataset.dir = 'down';
+                    downBtn.title = 'Опустить ниже';
+                    moveDiv.appendChild(downBtn);
+                    
+                    actionsDiv.appendChild(moveDiv);
+                    // ===== КОНЕЦ НОВЫХ КНОПОК =====
+
                     if (!p.done && !p.skipped) {
                         const doneBtn = document.createElement('button');
                         doneBtn.className = 'btn-action';
@@ -1455,7 +1507,6 @@
                         actionsDiv.appendChild(doneBtn);
                     }
 
-                    // Кнопка "Пропустить" — только если не done
                     if (!p.done) {
                         const skipBtn = document.createElement('button');
                         skipBtn.className = 'btn-action skip-btn';
@@ -1466,7 +1517,6 @@
                         skipBtn.addEventListener('click', function(e) {
                             e.stopPropagation();
                             if (p.skipped) {
-                                // Отмена пропуска
                                 p.skipped = false;
                                 addLogEntry(data, 'info', `${p.name} — пропуск отменён`);
                             } else {
@@ -1480,7 +1530,6 @@
                         actionsDiv.appendChild(skipBtn);
                     }
 
-                    // Кнопка "Переброс" — максимум 2 раза, только если не done
                     if (!p.done) {
                         const diceBtn = document.createElement('button');
                         diceBtn.className = 'btn-action dice-btn';
@@ -1504,7 +1553,6 @@
                         actionsDiv.appendChild(diceBtn);
                     }
 
-                    // Кнопка сброса статуса (если done или skipped)
                     if (p.done || p.skipped) {
                         const resetBtn = document.createElement('button');
                         resetBtn.className = 'btn-action reset-btn';
@@ -1514,7 +1562,6 @@
                             if (confirm(`Сбросить статус "${p.name}"?`)) {
                                 p.done = false;
                                 p.skipped = false;
-                                // Не сбрасываем diceUsed — перебросы остаются
                                 addLogEntry(data, 'info', `${p.name} — статус сброшен`);
                                 saveToFirebase();
                                 renderAll();
@@ -1523,7 +1570,6 @@
                         actionsDiv.appendChild(resetBtn);
                     }
 
-                    // Удаление участника
                     const delBtn = document.createElement('button');
                     delBtn.className = 'delete-btn';
                     delBtn.textContent = '✕';
@@ -1543,7 +1589,6 @@
                 });
             }
 
-            // Кнопка завершения круга
             if (total > 0 && allDoneOrSkipped) {
                 finishBtn.classList.add('active');
                 finishBtn.textContent = '🔄 Завершить круг';
@@ -1557,9 +1602,33 @@
                 }
             }
 
-            // Рендер лога
             renderLog(data);
         }
+
+        // ===== ОБРАБОТЧИК КНОПОК ПЕРЕМЕЩЕНИЯ (делегирование) =====
+        queueList.addEventListener('click', function(e) {
+            const moveBtn = e.target.closest('.move-btn');
+            if (!moveBtn) return;
+            
+            const idx = parseInt(moveBtn.dataset.idx);
+            const dir = moveBtn.dataset.dir;
+            const ep = getCurrentEpisode();
+            if (!ep) return;
+            
+            const players = ep.data.players;
+            if (dir === 'up' && idx > 0) {
+                [players[idx], players[idx - 1]] = [players[idx - 1], players[idx]];
+            } else if (dir === 'down' && idx < players.length - 1) {
+                [players[idx], players[idx + 1]] = [players[idx + 1], players[idx]];
+            } else {
+                return;
+            }
+            
+            addLogEntry(ep.data, 'info', `Порядок изменён: ${players.map(p => p.name).join(' → ')}`);
+            saveToFirebase();
+            renderAll();
+        });
+        // ===== КОНЕЦ ОБРАБОТЧИКА =====
 
         function initDefaultData() {
             fullData = getDefaultData();
@@ -1653,7 +1722,6 @@
                 return;
             }
             
-            // Логируем завершение круга
             const doneList = players.filter(p => p.done).map(p => p.name).join(', ');
             const skippedList = players.filter(p => p.skipped).map(p => p.name).join(', ');
             let logText = 'Круг завершён';
@@ -1661,17 +1729,14 @@
             if (skippedList) logText += ` | Пропустили: ${skippedList}`;
             addLogEntry(ep.data, 'round', logText);
             
-            // Сбрасываем статусы, но сохраняем перебросы
             for (let p of players) {
                 p.done = false;
                 p.skipped = false;
-                // diceUsed НЕ сбрасываем — они накапливаются
             }
             saveToFirebase();
             renderAll();
         });
 
-        // Очистка лога
         clearLogBtn.addEventListener('click', function() {
             const ep = getCurrentEpisode();
             if (!ep) return;
