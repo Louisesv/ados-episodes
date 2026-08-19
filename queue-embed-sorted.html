@@ -5,9 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Очередь</title>
     <style>
-        /* ================================================================
-           ВСЕ СТИЛИ — ВНУТРИ IFRAME
-           ================================================================ */
         * {
             margin: 0;
             padding: 0;
@@ -144,43 +141,25 @@
     });
 
     // ================================================================
-    // ФУНКЦИЯ ДЛЯ ИЗВЛЕЧЕНИЯ НОМЕРА ЭПИЗОДА ИЗ НАЗВАНИЯ
+    // ФУНКЦИЯ ДЛЯ ФОРМАТИРОВАНИЯ НОМЕРА ЭПИЗОДА ИЗ КЛЮЧА
     // ================================================================
-    function extractEpisodeNumber(title) {
-        if (!title) return 0;
-        var match = title.match(/^Ep\.([\d.]+)/);
-        if (match) {
-            var numStr = match[1];
-            return parseFloat(numStr);
-        }
-        return 0;
-    }
-
-    // ================================================================
-    // ФУНКЦИЯ ДЛЯ ФОРМАТИРОВАНИЯ НОМЕРА ЭПИЗОДА
-    // ================================================================
-    function formatEpisodeNumber(title) {
-        if (!title) return 'Ep.';
-        var match = title.match(/^Ep\.([\d.]+)/);
-        if (match) {
-            var num = match[1];
-            if (num.indexOf('.') !== -1) {
-                return 'Ep. ' + num + ':';
-            }
+    function formatEpisodeNumberFromKey(key) {
+        if (!key) return 'Ep.';
+        // key имеет вид "ep1", "ep1.2", "ep2" и т.д.
+        var num = key.replace('ep', '');
+        if (num.indexOf('.') !== -1) {
             return 'Ep. ' + num + ':';
         }
-        return 'Ep.';
+        return 'Ep. ' + num + ':';
     }
 
     // ================================================================
-    // ФУНКЦИЯ ДЛЯ ОЧИСТКИ НАЗВАНИЯ — УБИРАЕМ ВСЁ, КРОМЕ САМОГО НАЗВАНИЯ
+    // ФУНКЦИЯ ДЛЯ ОЧИСТКИ НАЗВАНИЯ
     // ================================================================
     function cleanTitle(title) {
         if (!title) return 'Без названия';
-        // Убираем "Ep.X.Y" или "Ep.X" из начала
-        var cleaned = title.replace(/^Ep\.\s*[\d.]+\s*/, '');
         // Убираем "Сталь, кровь и пепел: "
-        cleaned = cleaned.replace(/^Сталь, кровь и пепел:\s*/, '');
+        var cleaned = title.replace(/^Сталь, кровь и пепел:\s*/, '');
         // Убираем всё в скобках
         var index = cleaned.indexOf('(');
         if (index !== -1) {
@@ -202,9 +181,10 @@
             };
         });
 
+        // Сортируем по номеру из ключа
         episodeList.sort(function(a, b) {
-            var numA = extractEpisodeNumber(a.data.title || '');
-            var numB = extractEpisodeNumber(b.data.title || '');
+            var numA = parseFloat(a.key.replace('ep', ''));
+            var numB = parseFloat(b.key.replace('ep', ''));
             return numA - numB;
         });
 
@@ -217,14 +197,14 @@
 
         episodeList.forEach(function(item) {
             var ep = item.data;
+            var key = item.key;
             if (!ep) return;
 
             var players = ep.players || [];
             var rawTitle = ep.title || 'Без названия';
             
-            // ✅ СНАЧАЛА извлекаем номер
-            var epNumber = formatEpisodeNumber(rawTitle);
-            // ✅ ПОТОМ чистим название (номер уже сохранён в epNumber)
+            // ✅ Номер берём ИЗ КЛЮЧА, а не из названия
+            var epNumber = formatEpisodeNumberFromKey(key);
             var title = cleanTitle(rawTitle);
 
             var current = null;
