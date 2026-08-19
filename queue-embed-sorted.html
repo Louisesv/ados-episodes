@@ -147,9 +147,21 @@
         if (!title) return 0;
         var match = title.match(/^Ep\.\s*([\d.]+)/);
         if (match) {
-            return parseFloat(match[1]);
+            return match[1]; // возвращаем строку, а не число!
         }
-        return 0;
+        return '0';
+    }
+
+    // ================================================================
+    // ФУНКЦИЯ ДЛЯ ОЧИСТКИ НАЗВАНИЯ ОТ ЛИШНИХ ДВОЕТОЧИЙ
+    // ================================================================
+    function cleanTitle(title) {
+        if (!title) return 'Без названия';
+        // Убираем лишние двоеточия: "Ep. 1: : Турнир" → "Ep. 1: Турнир"
+        var cleaned = title.replace(/:\s*:/g, ':');
+        // Убираем двойные пробелы
+        cleaned = cleaned.replace(/\s{2,}/g, ' ');
+        return cleaned;
     }
 
     // ================================================================
@@ -165,11 +177,12 @@
             };
         });
 
-        // Сортируем по номеру, извлечённому из названия
+        // Сортируем по номеру как строке (чтобы "1" < "1.1" < "1.2" < "2")
         episodeList.sort(function(a, b) {
             var numA = extractEpisodeNumber(a.data.title || '');
             var numB = extractEpisodeNumber(b.data.title || '');
-            return numA - numB;
+            // Сравниваем как строки, с учётом версионности
+            return numA.localeCompare(numB, undefined, { numeric: true, sensitivity: 'base' });
         });
 
         if (episodeList.length === 0) {
@@ -184,7 +197,8 @@
             if (!ep) return;
 
             var players = ep.players || [];
-            var title = ep.title || 'Без названия';
+            var rawTitle = ep.title || 'Без названия';
+            var title = cleanTitle(rawTitle);
 
             var current = null;
             for (var i = 0; i < players.length; i++) {
