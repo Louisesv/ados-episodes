@@ -15,7 +15,7 @@
         }
         html, body {
             height: 100%;
-            overflow: hidden;           /* ← убираем прокрутку у body */
+            overflow: hidden;
             font-family: 'Century Gothic', 'CenturyGothic', 'Apple Gothic', sans-serif;
             font-size: 10px;
             color: #1a1a2e;
@@ -26,12 +26,12 @@
         /* Контейнер с прокруткой */
         #queue-wrapper {
             height: 100%;
-            overflow-y: auto;           /* ← ВЕРТИКАЛЬНАЯ ПРОКРУТКА */
-            overflow-x: hidden;         /* ← горизонтальная отключена */
+            overflow-y: auto;
+            overflow-x: hidden;
             padding: 4px 0;
         }
         
-        /* Стилизация скроллбара (опционально) */
+        /* Стилизация скроллбара */
         #queue-wrapper::-webkit-scrollbar {
             width: 4px;
         }
@@ -57,7 +57,7 @@
             margin-bottom: 4px;
             padding-bottom: 4px;
             border-bottom: 1px solid #d0d0d0;
-            flex-shrink: 0;             /* ← чтобы не сжимался */
+            flex-shrink: 0;
         }
 
         /* Каждый эпизод — отдельный блок */
@@ -104,10 +104,7 @@
 </head>
 <body>
     <div id="queue-wrapper">
-        <!-- БЛОК 1: ЗАГОЛОВОК -->
         <div id="queue-header" class="queue-header">Квестовая очередность:</div>
-        
-        <!-- БЛОК 2: СПИСОК ЭПИЗОДОВ -->
         <div id="queue-list">
             <div class="queue-loading">Загрузка...</div>
         </div>
@@ -140,9 +137,6 @@
     }
     var db = firebase.database();
 
-    // ================================================================
-    // ПУТЬ: queueDataAdvanced
-    // ================================================================
     var ref = db.ref('queueDataAdvanced');
 
     ref.on('value', function(snapshot) {
@@ -170,11 +164,15 @@
     }
 
     // ================================================================
-    // ФУНКЦИЯ ДЛЯ ОЧИСТКИ НАЗВАНИЯ
+    // ФУНКЦИЯ ДЛЯ ОЧИСТКИ НАЗВАНИЯ — УБИРАЕМ ВСЁ ЛИШНЕЕ
     // ================================================================
     function cleanTitle(title) {
         if (!title) return 'Без названия';
-        var cleaned = title.replace(/^Сталь, кровь и пепел:\s*/, '');
+        // Убираем "Ep.X.Y" или "Ep.X" из начала
+        var cleaned = title.replace(/^Ep\.\s*[\d.]+\s*/, '');
+        // Убираем "Сталь, кровь и пепел: "
+        cleaned = cleaned.replace(/^Сталь, кровь и пепел:\s*/, '');
+        // Убираем всё в скобках
         var index = cleaned.indexOf('(');
         if (index !== -1) {
             cleaned = cleaned.substring(0, index).trim();
@@ -250,6 +248,7 @@
             // Дедлайн
             var deadline = current && current.deadline ? ' (до ' + current.deadline + ')' : '';
 
+            // ✅ Теперь здесь НЕТ лишнего "Ep."
             var line = epNumber + ' ' + title + ' — ' + name + deadline;
 
             html += '<div class="queue-episode">' + line + '</div>';
