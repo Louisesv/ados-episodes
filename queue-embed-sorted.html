@@ -23,7 +23,6 @@
             padding: 0;
         }
         
-        /* Контейнер с прокруткой */
         #queue-wrapper {
             height: 100%;
             overflow-y: auto;
@@ -31,7 +30,6 @@
             padding: 4px 0;
         }
         
-        /* Стилизация скроллбара */
         #queue-wrapper::-webkit-scrollbar {
             width: 4px;
         }
@@ -46,7 +44,6 @@
             background: #a0a0a0;
         }
 
-        /* Заголовок */
         .queue-header {
             font-family: 'Century Gothic', 'CenturyGothic', 'Apple Gothic', sans-serif;
             font-size: 10px;
@@ -60,7 +57,6 @@
             flex-shrink: 0;
         }
 
-        /* Каждый эпизод — отдельный блок */
         .queue-episode {
             font-family: 'Century Gothic', 'CenturyGothic', 'Apple Gothic', sans-serif;
             font-size: 10px;
@@ -72,7 +68,6 @@
             line-height: 1.4;
         }
 
-        /* Загрузка */
         .queue-loading {
             font-family: 'Century Gothic', 'CenturyGothic', 'Apple Gothic', sans-serif;
             font-size: 10px;
@@ -82,7 +77,6 @@
             color: #6b7280;
         }
 
-        /* Ошибка */
         .queue-error {
             font-family: 'Century Gothic', 'CenturyGothic', 'Apple Gothic', sans-serif;
             font-size: 10px;
@@ -91,7 +85,6 @@
             padding: 8px 0;
         }
 
-        /* Пусто */
         .queue-empty {
             font-family: 'Century Gothic', 'CenturyGothic', 'Apple Gothic', sans-serif;
             font-size: 10px;
@@ -164,23 +157,6 @@
     }
 
     // ================================================================
-    // ФУНКЦИЯ ДЛЯ ОЧИСТКИ НАЗВАНИЯ — УБИРАЕМ ВСЁ ЛИШНЕЕ
-    // ================================================================
-    function cleanTitle(title) {
-        if (!title) return 'Без названия';
-        // Убираем "Ep.X.Y" или "Ep.X" из начала
-        var cleaned = title.replace(/^Ep\.\s*[\d.]+\s*/, '');
-        // Убираем "Сталь, кровь и пепел: "
-        cleaned = cleaned.replace(/^Сталь, кровь и пепел:\s*/, '');
-        // Убираем всё в скобках
-        var index = cleaned.indexOf('(');
-        if (index !== -1) {
-            cleaned = cleaned.substring(0, index).trim();
-        }
-        return cleaned;
-    }
-
-    // ================================================================
     // ФУНКЦИЯ ДЛЯ ФОРМАТИРОВАНИЯ НОМЕРА ЭПИЗОДА
     // ================================================================
     function formatEpisodeNumber(title) {
@@ -194,6 +170,23 @@
             return 'Ep. ' + num + ':';
         }
         return 'Ep.';
+    }
+
+    // ================================================================
+    // ФУНКЦИЯ ДЛЯ ОЧИСТКИ НАЗВАНИЯ — УБИРАЕМ ВСЁ, КРОМЕ САМОГО НАЗВАНИЯ
+    // ================================================================
+    function cleanTitle(title) {
+        if (!title) return 'Без названия';
+        // Убираем "Ep.X.Y" или "Ep.X" из начала
+        var cleaned = title.replace(/^Ep\.\s*[\d.]+\s*/, '');
+        // Убираем "Сталь, кровь и пепел: "
+        cleaned = cleaned.replace(/^Сталь, кровь и пепел:\s*/, '');
+        // Убираем всё в скобках
+        var index = cleaned.indexOf('(');
+        if (index !== -1) {
+            cleaned = cleaned.substring(0, index).trim();
+        }
+        return cleaned;
     }
 
     // ================================================================
@@ -229,11 +222,16 @@
             var players = ep.players || [];
             var rawTitle = ep.title || 'Без названия';
             
+            // ✅ СНАЧАЛА извлекаем номер
             var epNumber = formatEpisodeNumber(rawTitle);
+            // ✅ ПОТОМ чистим название (номер уже сохранён в epNumber)
             var title = cleanTitle(rawTitle);
 
             var current = null;
             for (var i = 0; i < players.length; i++) {
+                if (!players[i].done && !players[i].skipped) {
+                    current = players[i];
+                    break;
                 if (!players[i].done && !players[i].skipped) {
                     current = players[i];
                     break;
@@ -248,7 +246,6 @@
             // Дедлайн
             var deadline = current && current.deadline ? ' (до ' + current.deadline + ')' : '';
 
-            // ✅ Теперь здесь НЕТ лишнего "Ep."
             var line = epNumber + ' ' + title + ' — ' + name + deadline;
 
             html += '<div class="queue-episode">' + line + '</div>';
