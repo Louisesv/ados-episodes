@@ -4,11 +4,113 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Очередь</title>
-    <!-- Стилей нет — всё задаётся на месте встройки -->
+    <style>
+        /* ================================================================
+           ВСЕ СТИЛИ — ВНУТРИ IFRAME
+           ================================================================ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html, body {
+            height: 100%;
+            overflow: hidden;           /* ← убираем прокрутку у body */
+            font-family: 'Century Gothic', 'CenturyGothic', 'Apple Gothic', sans-serif;
+            font-size: 10px;
+            color: #1a1a2e;
+            background: transparent;
+            padding: 0;
+        }
+        
+        /* Контейнер с прокруткой */
+        #queue-wrapper {
+            height: 100%;
+            overflow-y: auto;           /* ← ВЕРТИКАЛЬНАЯ ПРОКРУТКА */
+            overflow-x: hidden;         /* ← горизонтальная отключена */
+            padding: 4px 0;
+        }
+        
+        /* Стилизация скроллбара (опционально) */
+        #queue-wrapper::-webkit-scrollbar {
+            width: 4px;
+        }
+        #queue-wrapper::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #queue-wrapper::-webkit-scrollbar-thumb {
+            background: #c0c0c0;
+            border-radius: 10px;
+        }
+        #queue-wrapper::-webkit-scrollbar-thumb:hover {
+            background: #a0a0a0;
+        }
+
+        /* Заголовок */
+        .queue-header {
+            font-family: 'Century Gothic', 'CenturyGothic', 'Apple Gothic', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #333333;
+            margin-bottom: 4px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid #d0d0d0;
+            flex-shrink: 0;             /* ← чтобы не сжимался */
+        }
+
+        /* Каждый эпизод — отдельный блок */
+        .queue-episode {
+            font-family: 'Century Gothic', 'CenturyGothic', 'Apple Gothic', sans-serif;
+            font-size: 10px;
+            color: #1a1a2e;
+            padding: 2px 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.4;
+        }
+
+        /* Загрузка */
+        .queue-loading {
+            font-family: 'Century Gothic', 'CenturyGothic', 'Apple Gothic', sans-serif;
+            font-size: 10px;
+            text-align: center;
+            opacity: 0.6;
+            padding: 8px 0;
+            color: #6b7280;
+        }
+
+        /* Ошибка */
+        .queue-error {
+            font-family: 'Century Gothic', 'CenturyGothic', 'Apple Gothic', sans-serif;
+            font-size: 10px;
+            text-align: center;
+            color: #dc2626;
+            padding: 8px 0;
+        }
+
+        /* Пусто */
+        .queue-empty {
+            font-family: 'Century Gothic', 'CenturyGothic', 'Apple Gothic', sans-serif;
+            font-size: 10px;
+            text-align: center;
+            color: #6b7280;
+            padding: 8px 0;
+            font-style: italic;
+        }
+    </style>
 </head>
 <body>
-    <div id="queue">
-        <div class="queue-loading">Загрузка...</div>
+    <div id="queue-wrapper">
+        <!-- БЛОК 1: ЗАГОЛОВОК -->
+        <div id="queue-header" class="queue-header">Квестовая очередность:</div>
+        
+        <!-- БЛОК 2: СПИСОК ЭПИЗОДОВ -->
+        <div id="queue-list">
+            <div class="queue-loading">Загрузка...</div>
+        </div>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -30,7 +132,8 @@
     };
     // ================================================================
 
-    var container = document.getElementById('queue');
+    var headerContainer = document.getElementById('queue-header');
+    var listContainer = document.getElementById('queue-list');
 
     if (!firebase.apps.length) {
         firebase.initializeApp(FIREBASE_CONFIG);
@@ -47,10 +150,10 @@
         if (data && data.episodes) {
             render(data);
         } else {
-            container.innerHTML = '<div class="queue-error">⚠️ Нет данных</div>';
+            listContainer.innerHTML = '<div class="queue-error">⚠️ Нет данных</div>';
         }
     }, function(error) {
-        container.innerHTML = '<div class="queue-error">⚠️ Ошибка</div>';
+        listContainer.innerHTML = '<div class="queue-error">⚠️ Ошибка</div>';
     });
 
     // ================================================================
@@ -67,13 +170,11 @@
     }
 
     // ================================================================
-    // ФУНКЦИЯ ДЛЯ ОЧИСТКИ НАЗВАНИЯ (убираем мета-информацию)
+    // ФУНКЦИЯ ДЛЯ ОЧИСТКИ НАЗВАНИЯ
     // ================================================================
     function cleanTitle(title) {
         if (!title) return 'Без названия';
-        // Убираем "Сталь, кровь и пепел: "
         var cleaned = title.replace(/^Сталь, кровь и пепел:\s*/, '');
-        // Убираем всё в скобках
         var index = cleaned.indexOf('(');
         if (index !== -1) {
             cleaned = cleaned.substring(0, index).trim();
@@ -98,7 +199,7 @@
     }
 
     // ================================================================
-    // ОТОБРАЖЕНИЕ — ТОЛЬКО ТЕКСТ, БЕЗ СТИЛЕЙ
+    // ОТОБРАЖЕНИЕ
     // ================================================================
     function render(data) {
         var episodes = data.episodes || {};
@@ -117,7 +218,7 @@
         });
 
         if (episodeList.length === 0) {
-            container.innerHTML = '<div class="queue-empty">Нет эпизодов</div>';
+            listContainer.innerHTML = '<div class="queue-empty">Нет эпизодов</div>';
             return;
         }
 
@@ -151,11 +252,10 @@
 
             var line = epNumber + ' ' + title + ' — ' + name + deadline;
 
-            // Каждый эпизод — отдельный блок
             html += '<div class="queue-episode">' + line + '</div>';
         });
 
-        container.innerHTML = html;
+        listContainer.innerHTML = html;
     }
     </script>
 </body>
