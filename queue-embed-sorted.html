@@ -147,10 +147,16 @@
         if (!key) return 'Ep.';
         // key имеет вид "ep1", "ep1.2", "ep2" и т.д.
         var num = key.replace('ep', '');
-        if (num.indexOf('.') !== -1) {
-            return 'Ep. ' + num + ':';
-        }
         return 'Ep. ' + num + ':';
+    }
+
+    // ================================================================
+    // ФУНКЦИЯ ДЛЯ ИЗВЛЕЧЕНИЯ НОМЕРА ДЛЯ СОРТИРОВКИ
+    // ================================================================
+    function getEpisodeNumber(key) {
+        if (!key) return 0;
+        var num = parseFloat(key.replace('ep', ''));
+        return isNaN(num) ? 0 : num;
     }
 
     // ================================================================
@@ -160,6 +166,8 @@
         if (!title) return 'Без названия';
         // Убираем "Сталь, кровь и пепел: "
         var cleaned = title.replace(/^Сталь, кровь и пепел:\s*/, '');
+        // Убираем "Ep.X.Y" или "Ep.X" из начала (если есть)
+        cleaned = cleaned.replace(/^Ep\.\s*[\d.]+\s*/, '');
         // Убираем всё в скобках
         var index = cleaned.indexOf('(');
         if (index !== -1) {
@@ -183,9 +191,7 @@
 
         // Сортируем по номеру из ключа
         episodeList.sort(function(a, b) {
-            var numA = parseFloat(a.key.replace('ep', ''));
-            var numB = parseFloat(b.key.replace('ep', ''));
-            return numA - numB;
+            return getEpisodeNumber(a.key) - getEpisodeNumber(b.key);
         });
 
         if (episodeList.length === 0) {
@@ -203,7 +209,7 @@
             var players = ep.players || [];
             var rawTitle = ep.title || 'Без названия';
             
-            // ✅ Номер берём ИЗ КЛЮЧА, а не из названия
+            // ✅ Номер берём ИЗ КЛЮЧА
             var epNumber = formatEpisodeNumberFromKey(key);
             var title = cleanTitle(rawTitle);
 
