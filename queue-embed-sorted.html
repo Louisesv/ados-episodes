@@ -4,10 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Очередь</title>
-    <!-- 
-      ⚠️ СТИЛЕЙ НЕТ — ВСЁ ЗАДАЁТСЯ НА МЕСТЕ ВСТРОЙКИ 
-      Все стили задаются через CSS в обёртке iframe
-    -->
+    <!-- Стилей нет — всё задаётся на месте встройки -->
 </head>
 <body>
     <div id="queue">
@@ -74,9 +71,14 @@
     // ================================================================
     function cleanTitle(title) {
         if (!title) return 'Без названия';
-        var index = title.indexOf('(');
-        if (index === -1) return title.trim();
-        return title.substring(0, index).trim();
+        // Убираем "Сталь, кровь и пепел: "
+        var cleaned = title.replace(/^Сталь, кровь и пепел:\s*/, '');
+        // Убираем всё в скобках
+        var index = cleaned.indexOf('(');
+        if (index !== -1) {
+            cleaned = cleaned.substring(0, index).trim();
+        }
+        return cleaned;
     }
 
     // ================================================================
