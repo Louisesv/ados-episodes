@@ -141,39 +141,15 @@
     });
 
     // ================================================================
-    // ФУНКЦИЯ ДЛЯ ФОРМАТИРОВАНИЯ НОМЕРА ЭПИЗОДА ИЗ КЛЮЧА
+    // ФУНКЦИЯ ДЛЯ ИЗВЛЕЧЕНИЯ НОМЕРА ЭПИЗОДА ИЗ НАЗВАНИЯ
     // ================================================================
-    function formatEpisodeNumberFromKey(key) {
-        if (!key) return 'Ep.';
-        // key имеет вид "ep1", "ep1.2", "ep2" и т.д.
-        var num = key.replace('ep', '');
-        return 'Ep. ' + num + ':';
-    }
-
-    // ================================================================
-    // ФУНКЦИЯ ДЛЯ ИЗВЛЕЧЕНИЯ НОМЕРА ДЛЯ СОРТИРОВКИ
-    // ================================================================
-    function getEpisodeNumber(key) {
-        if (!key) return 0;
-        var num = parseFloat(key.replace('ep', ''));
-        return isNaN(num) ? 0 : num;
-    }
-
-    // ================================================================
-    // ФУНКЦИЯ ДЛЯ ОЧИСТКИ НАЗВАНИЯ
-    // ================================================================
-    function cleanTitle(title) {
-        if (!title) return 'Без названия';
-        // Убираем "Сталь, кровь и пепел: "
-        var cleaned = title.replace(/^Сталь, кровь и пепел:\s*/, '');
-        // Убираем "Ep.X.Y" или "Ep.X" из начала (если есть)
-        cleaned = cleaned.replace(/^Ep\.\s*[\d.]+\s*/, '');
-        // Убираем всё в скобках
-        var index = cleaned.indexOf('(');
-        if (index !== -1) {
-            cleaned = cleaned.substring(0, index).trim();
+    function extractEpisodeNumber(title) {
+        if (!title) return 0;
+        var match = title.match(/^Ep\.\s*([\d.]+)/);
+        if (match) {
+            return parseFloat(match[1]);
         }
-        return cleaned;
+        return 0;
     }
 
     // ================================================================
@@ -189,9 +165,11 @@
             };
         });
 
-        // Сортируем по номеру из ключа
+        // Сортируем по номеру, извлечённому из названия
         episodeList.sort(function(a, b) {
-            return getEpisodeNumber(a.key) - getEpisodeNumber(b.key);
+            var numA = extractEpisodeNumber(a.data.title || '');
+            var numB = extractEpisodeNumber(b.data.title || '');
+            return numA - numB;
         });
 
         if (episodeList.length === 0) {
@@ -203,15 +181,10 @@
 
         episodeList.forEach(function(item) {
             var ep = item.data;
-            var key = item.key;
             if (!ep) return;
 
             var players = ep.players || [];
-            var rawTitle = ep.title || 'Без названия';
-            
-            // ✅ Номер берём ИЗ КЛЮЧА
-            var epNumber = formatEpisodeNumberFromKey(key);
-            var title = cleanTitle(rawTitle);
+            var title = ep.title || 'Без названия';
 
             var current = null;
             for (var i = 0; i < players.length; i++) {
@@ -229,7 +202,7 @@
             // Дедлайн
             var deadline = current && current.deadline ? ' (до ' + current.deadline + ')' : '';
 
-            var line = epNumber + ' ' + title + ' — ' + name + deadline;
+            var line = title + ' — ' + name + deadline;
 
             html += '<div class="queue-episode">' + line + '</div>';
         });
