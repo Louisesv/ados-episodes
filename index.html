@@ -210,6 +210,55 @@
             border-bottom-color: #4f46e5;
         }
         
+        /* Поле для ссылки на эпизод */
+        .episode-link {
+            margin-top: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .episode-link label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            flex-shrink: 0;
+        }
+        .episode-link input {
+            flex: 1;
+            padding: 4px 8px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            outline: none;
+            background: #fafbfc;
+            color: #1a1a2e;
+            font-family: inherit;
+            transition: 0.2s;
+        }
+        .episode-link input:focus {
+            border-color: #4f46e5;
+            background: #ffffff;
+            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.08);
+        }
+        .episode-link input::placeholder {
+            color: #9ca3af;
+        }
+        .episode-link .link-open {
+            color: #4f46e5;
+            text-decoration: none;
+            font-size: 0.85rem;
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid #4f46e5;
+            transition: 0.2s;
+            flex-shrink: 0;
+        }
+        .episode-link .link-open:hover {
+            background: #eef2ff;
+        }
+        
         .episode-notes {
             margin-top: 0.8rem;
         }
@@ -396,7 +445,6 @@
             min-width: 100px;
         }
         
-        /* Поле даты */
         .queue-item .deadline-input {
             font-size: 0.75rem;
             padding: 2px 6px;
@@ -519,7 +567,6 @@
             background: #fecaca;
         }
         
-        /* КНОПКИ ПЕРЕМЕЩЕНИЯ */
         .queue-item .move-btns {
             display: flex;
             flex-direction: column;
@@ -997,6 +1044,9 @@
                 width: 65px;
                 font-size: 0.7rem;
             }
+            .episode-link {
+                flex-wrap: wrap;
+            }
         }
     </style>
 </head>
@@ -1012,6 +1062,7 @@
         <h2>Новый эпизод</h2>
         <input type="text" id="newEpisodeTitle" placeholder="Название эпизода..." />
         <input type="text" id="newEpisodeMeta" placeholder="Доп. информация..." />
+        <input type="url" id="newEpisodeLink" placeholder="Ссылка на эпизод (необязательно)..." />
         <div class="modal-buttons">
             <button id="modalCancel">Отмена</button>
             <button class="confirm-btn" id="modalConfirm">Создать</button>
@@ -1050,6 +1101,13 @@
                 <div class="episode-label">Редактировать</div>
                 <input class="episode-title" id="episodeTitle" placeholder="Название эпизода..." />
                 <input class="episode-meta" id="episodeMeta" placeholder="Дополнительно..." />
+                
+                <!-- Поле для ссылки на эпизод -->
+                <div class="episode-link">
+                    <label for="episodeLinkInput">🔗 Ссылка:</label>
+                    <input type="url" id="episodeLinkInput" placeholder="https://..." />
+                    <a href="#" class="link-open" id="episodeLinkOpen" target="_blank" style="display:none;">Открыть</a>
+                </div>
                 
                 <div class="episode-notes">
                     <span class="episode-notes-label">📝 Заметки к эпизоду</span>
@@ -1114,6 +1172,8 @@
         const episodeSelect = document.getElementById('episodeSelect');
         const episodeTitleEl = document.getElementById('episodeTitle');
         const episodeMetaEl = document.getElementById('episodeMeta');
+        const episodeLinkInput = document.getElementById('episodeLinkInput');
+        const episodeLinkOpen = document.getElementById('episodeLinkOpen');
         const episodeNotesEl = document.getElementById('episodeNotes');
         const queueList = document.getElementById('queueList');
         const newNameInput = document.getElementById('newNameInput');
@@ -1129,6 +1189,7 @@
         const modalOverlay = document.getElementById('modalOverlay');
         const newEpisodeTitle = document.getElementById('newEpisodeTitle');
         const newEpisodeMeta = document.getElementById('newEpisodeMeta');
+        const newEpisodeLink = document.getElementById('newEpisodeLink');
         const modalCancel = document.getElementById('modalCancel');
         const modalConfirm = document.getElementById('modalConfirm');
         const logContainer = document.getElementById('logContainer');
@@ -1158,6 +1219,7 @@
                     'ep1': {
                         title: 'Ep.1.2. Сталь, кровь и пепел: Турнир',
                         meta: 'конец 3 месяца 302 З.Э.',
+                        link: '',
                         notes: '',
                         players: [
                             { name: 'HUGH OF THE VALE', done: false, skipped: false, diceUsed: 0, maxDice: 2, deadline: '' },
@@ -1171,6 +1233,7 @@
                     'ep2': {
                         title: 'Ep.2. Сталь, кровь и пепел: Цена одного слова',
                         meta: 'конец 3 месяца 302 З.Э.',
+                        link: '',
                         notes: '',
                         players: [
                             { name: 'RHAEGAR TARGARYEN', done: false, skipped: false, diceUsed: 0, maxDice: 2, deadline: '' },
@@ -1185,6 +1248,7 @@
                     'ep3': {
                         title: 'Ep.3. Сталь, кровь и пепел: Горький мёд',
                         meta: 'конец 3 месяца 302 З.Э.',
+                        link: '',
                         notes: '',
                         players: [
                             { name: 'ASHARA DAYNE', done: false, skipped: false, diceUsed: 0, maxDice: 2, deadline: '' },
@@ -1197,6 +1261,7 @@
                     'ep4': {
                         title: 'Ep.4. Сталь, кровь и пепел: По следам чернил',
                         meta: 'конец 3 месяца 302 З.Э.',
+                        link: '',
                         notes: '',
                         players: [
                             { name: 'AEGON TARGARYEN', done: false, skipped: false, diceUsed: 0, maxDice: 2, deadline: '' },
@@ -1211,6 +1276,7 @@
                     'ep5': {
                         title: 'Ep.5. Сталь, кровь и пепел: Рифмы стали и шёлка',
                         meta: 'конец 3 месяца 302 З.Э.',
+                        link: '',
                         notes: '',
                         players: [
                             { name: 'WILLAS TYRELL', done: false, skipped: false, diceUsed: 0, maxDice: 2, deadline: '' },
@@ -1225,6 +1291,7 @@
                     'ep7': {
                         title: 'Ep.7. Сталь, кровь и пепел: Плач над камнем',
                         meta: 'конец 3 месяца 302 З.Э.',
+                        link: '',
                         notes: '',
                         players: [
                             { name: 'WILLAS TYRELL', done: false, skipped: false, diceUsed: 0, maxDice: 2, deadline: '' },
@@ -1238,6 +1305,7 @@
                     'ep8': {
                         title: 'Ep.8. Сталь, кровь и пепел: Шепот в ночи',
                         meta: 'конец 3 месяца 302 З.Э.',
+                        link: '',
                         notes: '',
                         players: [
                             { name: 'DAEMON BLACKFYRE', done: false, skipped: false, diceUsed: 0, maxDice: 2, deadline: '' },
@@ -1270,6 +1338,7 @@
                     Object.keys(episodes).forEach(key => {
                         const ep = episodes[key];
                         if (!ep.notes) ep.notes = '';
+                        if (!ep.link) ep.link = '';
                         if (!ep.log) ep.log = [];
                         if (ep.players) {
                             ep.players.forEach(p => {
@@ -1416,6 +1485,8 @@
             if (!ep) {
                 episodeTitleEl.value = '';
                 episodeMetaEl.value = '';
+                episodeLinkInput.value = '';
+                episodeLinkOpen.style.display = 'none';
                 episodeNotesEl.value = '';
                 queueList.innerHTML = '<li class="empty-msg">Нет эпизодов. Создайте новый.</li>';
                 counterDisplay.textContent = '0 участников';
@@ -1429,6 +1500,13 @@
             const data = ep.data;
             episodeTitleEl.value = data.title || '';
             episodeMetaEl.value = data.meta || '';
+            episodeLinkInput.value = data.link || '';
+            if (data.link) {
+                episodeLinkOpen.style.display = 'inline-block';
+                episodeLinkOpen.href = data.link;
+            } else {
+                episodeLinkOpen.style.display = 'none';
+            }
             episodeNotesEl.value = data.notes || '';
 
             const players = data.players || [];
@@ -1477,7 +1555,6 @@
                     nameSpan.textContent = p.name || '?';
                     li.appendChild(nameSpan);
 
-                    // Поле даты
                     const deadlineLabel = document.createElement('span');
                     deadlineLabel.className = 'deadline-label';
                     deadlineLabel.textContent = '📅';
@@ -1510,7 +1587,6 @@
                     const actionsDiv = document.createElement('div');
                     actionsDiv.className = 'actions';
 
-                    // Кнопки перемещения
                     const moveDiv = document.createElement('div');
                     moveDiv.className = 'move-btns';
                     
@@ -1534,7 +1610,6 @@
                     
                     actionsDiv.appendChild(moveDiv);
 
-                    // ===================== КНОПКА "ОТПИСАТЬСЯ" =====================
                     if (!p.done && !p.skipped) {
                         const doneBtn = document.createElement('button');
                         doneBtn.className = 'btn-action';
@@ -1546,7 +1621,8 @@
                             e.stopPropagation();
                             p.done = true;
                             p.skipped = false;
-                            addLogEntry(data, 'done', `${p.name} отписался`);
+                            const deadlineText = p.deadline ? ` (дедлайн: ${p.deadline})` : '';
+                            addLogEntry(data, 'done', `${p.name} отписался${deadlineText}`);
                             saveToFirebase();
                             renderAll();
                         });
@@ -1635,7 +1711,6 @@
                 });
             }
 
-            // Обработчики для полей даты (делегирование) — с записью в лог
             document.querySelectorAll('.deadline-input').forEach(input => {
                 input.removeEventListener('change', handleDeadlineChange);
                 input.addEventListener('change', handleDeadlineChange);
@@ -1657,9 +1732,6 @@
             renderLog(data);
         }
 
-        // ============================================================
-        // ОБРАБОТЧИК ИЗМЕНЕНИЯ ДАТЫ — ПИШЕТ В ЛОГ ПРИ УСТАНОВКЕ
-        // ============================================================
         function handleDeadlineChange(e) {
             const input = e.target;
             const idx = parseInt(input.dataset.idx);
@@ -1672,14 +1744,12 @@
             player.deadline = newDeadline;
             saveToFirebase();
             
-            // Если дата была установлена или изменена — пишем в лог
             if (newDeadline && newDeadline !== oldDeadline) {
                 addLogEntry(ep.data, 'info', `${player.name} — дедлайн до ${newDeadline}`);
             }
             renderAll();
         }
 
-        // Обработчик перемещения
         queueList.addEventListener('click', function(e) {
             const moveBtn = e.target.closest('.move-btn');
             if (!moveBtn) return;
@@ -1727,6 +1797,22 @@
             const id = episodeSelect.value;
             if (id && fullData.episodes[id]) {
                 fullData.episodes[id].meta = episodeMetaEl.value;
+                saveToFirebase();
+            }
+        });
+
+        episodeLinkInput.addEventListener('input', function() {
+            if (!fullData) return;
+            const id = episodeSelect.value;
+            if (id && fullData.episodes[id]) {
+                const link = episodeLinkInput.value.trim();
+                fullData.episodes[id].link = link;
+                if (link) {
+                    episodeLinkOpen.style.display = 'inline-block';
+                    episodeLinkOpen.href = link;
+                } else {
+                    episodeLinkOpen.style.display = 'none';
+                }
                 saveToFirebase();
             }
         });
@@ -1824,6 +1910,7 @@
         function openModal() {
             newEpisodeTitle.value = '';
             newEpisodeMeta.value = '';
+            newEpisodeLink.value = '';
             modalOverlay.classList.add('visible');
             setTimeout(() => newEpisodeTitle.focus(), 100);
         }
@@ -1835,10 +1922,12 @@
         function createEpisode() {
             const title = newEpisodeTitle.value.trim() || 'Новый эпизод';
             const meta = newEpisodeMeta.value.trim() || '';
+            const link = newEpisodeLink.value.trim() || '';
             const id = 'ep' + Date.now();
             fullData.episodes[id] = {
                 title: title,
                 meta: meta,
+                link: link,
                 notes: '',
                 players: [],
                 log: []
