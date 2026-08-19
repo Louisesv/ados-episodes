@@ -65,6 +65,16 @@
             line-height: 1.4;
         }
 
+        /* Ссылка внутри эпизода — наследует стиль, но без подчёркивания */
+        .queue-episode a {
+            color: #1a1a2e;
+            text-decoration: none;
+        }
+        .queue-episode a:hover {
+            text-decoration: underline;
+            color: #4f46e5;
+        }
+
         .queue-loading {
             font-family: 'Century Gothic', 'CenturyGothic', 'Apple Gothic', sans-serif;
             font-size: 10px;
@@ -147,7 +157,7 @@
         if (!title) return 0;
         var match = title.match(/^Ep\.\s*([\d.]+)/);
         if (match) {
-            return match[1]; // возвращаем строку, а не число!
+            return match[1];
         }
         return '0';
     }
@@ -157,15 +167,13 @@
     // ================================================================
     function cleanTitle(title) {
         if (!title) return 'Без названия';
-        // Убираем лишние двоеточия: "Ep. 1: : Турнир" → "Ep. 1: Турнир"
         var cleaned = title.replace(/:\s*:/g, ':');
-        // Убираем двойные пробелы
         cleaned = cleaned.replace(/\s{2,}/g, ' ');
         return cleaned;
     }
 
     // ================================================================
-    // ОТОБРАЖЕНИЕ
+    // ОТОБРАЖЕНИЕ — С КЛИКАБЕЛЬНЫМ НАЗВАНИЕМ
     // ================================================================
     function render(data) {
         var episodes = data.episodes || {};
@@ -177,11 +185,10 @@
             };
         });
 
-        // Сортируем по номеру как строке (чтобы "1" < "1.1" < "1.2" < "2")
+        // Сортируем по номеру как строке
         episodeList.sort(function(a, b) {
             var numA = extractEpisodeNumber(a.data.title || '');
             var numB = extractEpisodeNumber(b.data.title || '');
-            // Сравниваем как строки, с учётом версионности
             return numA.localeCompare(numB, undefined, { numeric: true, sensitivity: 'base' });
         });
 
@@ -199,6 +206,7 @@
             var players = ep.players || [];
             var rawTitle = ep.title || 'Без названия';
             var title = cleanTitle(rawTitle);
+            var link = ep.link || '';
 
             var current = null;
             for (var i = 0; i < players.length; i++) {
@@ -212,11 +220,12 @@
             }
 
             var name = current ? current.name : '—';
-            
-            // Дедлайн
             var deadline = current && current.deadline ? ' (до ' + current.deadline + ')' : '';
 
-            var line = title + ' — ' + name + deadline;
+            // Если есть ссылка — оборачиваем название в <a>
+            var titleHtml = link ? '<a href="' + link + '" target="_blank">' + title + '</a>' : title;
+
+            var line = titleHtml + ' — ' + name + deadline;
 
             html += '<div class="queue-episode">' + line + '</div>';
         });
