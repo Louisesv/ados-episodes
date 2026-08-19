@@ -4,53 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Очередь</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            background: transparent;
-            font-family: -apple-system, 'Segoe UI', Roboto, system-ui, sans-serif;
-            color: #1a1a2e;
-            padding: 0;
-            font-size: 13px;
-            line-height: 1.4;
-        }
-        #queue {
-            padding: 2px 0;
-                overflow-x: auto;           /* ГОРИЗОНТАЛЬНАЯ ПРОКРУТКА */
-    white-space: nowrap;        /* ЗАПРЕТ ПЕРЕНОСА СТРОК */
-        }
-        .queue-item {
-            padding: 2px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .queue-item:last-child {
-            border-bottom: none;
-        }
-        .loading, .error {
-            text-align: center;
-            opacity: 0.6;
-            padding: 4px 0;
-            font-size: 12px;
-        }
-        .error {
-            color: #cc6666;
-            opacity: 1;
-        }
-        .status-bar {
-            display: none;
-        }
-    </style>
+    <!-- Стилей нет — всё задаётся на месте встройки -->
 </head>
 <body>
     <div id="queue">
-        <div class="loading">Загрузка...</div>
+        Загрузка...
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -79,6 +37,9 @@
     }
     var db = firebase.database();
 
+    // ================================================================
+    // ПУТЬ: queueDataAdvanced
+    // ================================================================
     var ref = db.ref('queueDataAdvanced');
 
     ref.on('value', function(snapshot) {
@@ -86,10 +47,10 @@
         if (data && data.episodes) {
             render(data);
         } else {
-            container.innerHTML = '<div class="error">⚠️ Нет данных</div>';
+            container.textContent = '⚠️ Нет данных';
         }
     }, function(error) {
-        container.innerHTML = '<div class="error">⚠️ Ошибка</div>';
+        container.textContent = '⚠️ Ошибка';
     });
 
     // ================================================================
@@ -97,11 +58,9 @@
     // ================================================================
     function extractEpisodeNumber(title) {
         if (!title) return 0;
-        // Ищем "Ep.X" или "Ep.X.Y" в начале названия
         var match = title.match(/^Ep\.([\d.]+)/);
         if (match) {
             var numStr = match[1];
-            // Преобразуем "1.2" в число 1.2 (для сравнения)
             return parseFloat(numStr);
         }
         return 0;
@@ -118,12 +77,11 @@
     }
 
     // ================================================================
-    // ОТОБРАЖЕНИЕ С СОРТИРОВКОЙ ПО НОМЕРУ В НАЗВАНИИ
+    // ОТОБРАЖЕНИЕ — ТОЛЬКО ТЕКСТ, БЕЗ СТИЛЕЙ
     // ================================================================
     function render(data) {
         var episodes = data.episodes || {};
         
-        // Превращаем объект в массив для сортировки
         var episodeList = Object.keys(episodes).map(function(key) {
             return {
                 key: key,
@@ -131,7 +89,6 @@
             };
         });
 
-        // Сортируем по номеру эпизода, извлечённому из названия
         episodeList.sort(function(a, b) {
             var numA = extractEpisodeNumber(a.data.title || '');
             var numB = extractEpisodeNumber(b.data.title || '');
@@ -139,7 +96,7 @@
         });
 
         if (episodeList.length === 0) {
-            container.innerHTML = '<div class="loading">Нет эпизодов</div>';
+            container.textContent = 'Нет эпизодов';
             return;
         }
 
@@ -165,9 +122,13 @@
             }
 
             var name = current ? current.name : '—';
-            var line = title + ' — ' + name;
+            
+            // Дедлайн
+            var deadline = current && current.deadline ? ` (до ${current.deadline})` : '';
 
-            html += '<div class="queue-item">' + line + '</div>';
+            var line = title + ' — ' + name + deadline;
+
+            html += '<div>' + line + '</div>';
         });
 
         container.innerHTML = html;
