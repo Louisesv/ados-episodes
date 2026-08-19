@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Очередь</title>
-    <!-- Стилей нет — всё задаётся на месте встройки -->
+    <!-- 
+      ⚠️ СТИЛЕЙ НЕТ — ВСЁ ЗАДАЁТСЯ НА МЕСТЕ ВСТРОЙКИ 
+      Все стили задаются через CSS в обёртке iframe
+    -->
 </head>
 <body>
     <div id="queue">
@@ -77,6 +80,22 @@
     }
 
     // ================================================================
+    // ФУНКЦИЯ ДЛЯ ФОРМАТИРОВАНИЯ НОМЕРА ЭПИЗОДА
+    // ================================================================
+    function formatEpisodeNumber(title) {
+        if (!title) return 'Ep.';
+        var match = title.match(/^Ep\.([\d.]+)/);
+        if (match) {
+            var num = match[1];
+            if (num.indexOf('.') !== -1) {
+                return 'Ep. ' + num + ':';
+            }
+            return 'Ep. ' + num + ':';
+        }
+        return 'Ep.';
+    }
+
+    // ================================================================
     // ОТОБРАЖЕНИЕ — ТОЛЬКО ТЕКСТ, БЕЗ СТИЛЕЙ
     // ================================================================
     function render(data) {
@@ -108,6 +127,8 @@
 
             var players = ep.players || [];
             var rawTitle = ep.title || 'Без названия';
+            
+            var epNumber = formatEpisodeNumber(rawTitle);
             var title = cleanTitle(rawTitle);
 
             var current = null;
@@ -126,7 +147,7 @@
             // Дедлайн
             var deadline = current && current.deadline ? ' (до ' + current.deadline + ')' : '';
 
-            var line = title + ' — ' + name + deadline;
+            var line = epNumber + ' ' + title + ' — ' + name + deadline;
 
             // Каждый эпизод — отдельный блок
             html += '<div class="queue-episode">' + line + '</div>';
